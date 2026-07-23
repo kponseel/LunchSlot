@@ -85,6 +85,10 @@ th{background:#f7f9fc;}
 .row>div{flex:1;min-width:140px;}
 .inline{display:inline;}
 .slot-line{display:flex;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.dyn-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;}
+.dyn-row input[type=text],.dyn-row input[type=email]{flex:1;min-width:140px;}
+.dyn-row input[type=number]{width:90px;}
+.dyn-del{flex:0 0 auto;line-height:1;}
 .copy{font-family:monospace;font-size:12px;background:#f2f4f7;padding:4px 6px;border-radius:4px;word-break:break-all;}
 @media(max-width:560px){table{font-size:13px}th,td{padding:6px}}
 CSS;

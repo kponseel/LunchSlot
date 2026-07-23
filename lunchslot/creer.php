@@ -3,7 +3,9 @@ require_once __DIR__ . '/inc/bootstrap.inc.php';
 
 $org = require_login();
 $errors = [];
-$old = ['title' => '', 'location' => '', 'organizer_name' => '', 'deadline' => '', 'participants' => '', 'slots' => ''];
+$old = ['title' => '', 'location' => '', 'organizer_name' => '', 'deadline' => ''];
+$pRows = [['name' => '', 'email' => '']];      // lignes participants
+$sRows = [['date' => '', 'time' => '', 'duration' => '90']]; // lignes créneaux
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
@@ -12,39 +14,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $participates = !empty($_POST['organizer_participates']);
 
+    // Reconstruit les lignes soumises (pour ré-affichage en cas d'erreur).
+    $pn = $_POST['pname'] ?? [];
+    $pe = $_POST['pemail'] ?? [];
+    $sd = $_POST['sdate'] ?? [];
+    $stime = $_POST['stime'] ?? [];
+    $sdur = $_POST['sduration'] ?? [];
+    $pRows = [];
+    for ($i = 0; $i < max(count($pn), count($pe)); $i++) {
+        $pRows[] = ['name' => trim((string) ($pn[$i] ?? '')), 'email' => trim((string) ($pe[$i] ?? ''))];
+    }
+    $sRows = [];
+    for ($i = 0; $i < max(count($sd), count($stime)); $i++) {
+        $sRows[] = ['date' => trim((string) ($sd[$i] ?? '')), 'time' => trim((string) ($stime[$i] ?? '')), 'duration' => trim((string) ($sdur[$i] ?? '90'))];
+    }
+
     if ($old['title'] === '') {
         $errors[] = __('create.err_title');
     }
 
+    // Participants valides.
     $participants = [];
-    foreach (preg_split('/\r\n|\r|\n/', $old['participants']) as $line) {
-        $line = trim($line);
-        if ($line === '') {
+    foreach ($pRows as $row) {
+        if ($row['name'] === '' && $row['email'] === '') {
+            continue; // ligne vide ignorée
+        }
+        if ($row['name'] === '' || !valid_email($row['email'])) {
+            $errors[] = __('create.err_participant', ['line' => trim($row['name'] . ' ' . $row['email'])]);
             continue;
         }
-        $parts = array_map('trim', preg_split('/[,;]/', $line, 2));
-        if (count($parts) < 2 || !valid_email($parts[1])) {
-            $errors[] = __('create.err_participant', ['line' => $line]);
-            continue;
-        }
-        $participants[] = ['name' => $parts[0], 'email' => $parts[1]];
+        $participants[] = ['name' => $row['name'], 'email' => $row['email']];
     }
     if (!$participants) {
         $errors[] = __('create.err_no_participant');
     }
 
+    // Créneaux valides.
     $slots = [];
-    foreach (preg_split('/\r\n|\r|\n/', $old['slots']) as $line) {
-        $line = trim($line);
-        if ($line === '') {
+    foreach ($sRows as $row) {
+        if ($row['date'] === '' && $row['time'] === '') {
             continue;
         }
-        $parts = array_map('trim', preg_split('/[,;]/', $line));
-        if (count($parts) < 2 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $parts[0]) || !preg_match('/^\d{1,2}:\d{2}$/', $parts[1])) {
-            $errors[] = __('create.err_slot', ['line' => $line]);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['date']) || !preg_match('/^\d{1,2}:\d{2}$/', $row['time'])) {
+            $errors[] = __('create.err_slot', ['line' => trim($row['date'] . ' ' . $row['time'])]);
             continue;
         }
-        $slots[] = ['date' => $parts[0], 'time' => $parts[1], 'duration' => (int) ($parts[2] ?? 60) ?: 60];
+        $slots[] = ['date' => $row['date'], 'time' => $row['time'], 'duration' => (int) $row['duration'] ?: 60];
     }
     if (!$slots) {
         $errors[] = __('create.err_no_slot');
@@ -76,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Garantit au moins une ligne vide à l'affichage.
+if (!$pRows) {
+    $pRows = [['name' => '', 'email' => '']];
+}
+if (!$sRows) {
+    $sRows = [['date' => '', 'time' => '', 'duration' => '90']];
+}
+
 page_header(__('create.title'), $org);
 echo '<h1>' . h(__('create.h1')) . '</h1>';
 foreach ($errors as $e) {
@@ -93,11 +116,30 @@ foreach ($errors as $e) {
   <label for="deadline"><?= h(__('create.deadline_label')) ?></label>
   <input type="datetime-local" id="deadline" name="deadline" value="<?= h($old['deadline']) ?>">
 
-  <label for="participants"><?= h(__('create.participants_label')) ?> <span class="muted"><?= h(__('create.participants_hint')) ?></span></label>
-  <textarea id="participants" name="participants" rows="5" placeholder="Marie Durand, marie@client.com&#10;Paul Martin, paul@client.com"><?= h($old['participants']) ?></textarea>
+  <h2><?= h(__('create.participants_label')) ?> <span class="muted">(<?= h(__('create.participants_hint')) ?>)</span></h2>
+  <div id="participants">
+    <?php foreach ($pRows as $r): ?>
+    <div class="dyn-row">
+      <input type="text" name="pname[]" placeholder="<?= h(__('create.p_name')) ?>" value="<?= h($r['name']) ?>">
+      <input type="email" name="pemail[]" placeholder="<?= h(__('create.p_email')) ?>" value="<?= h($r['email']) ?>">
+      <button type="button" class="btn-sec btn-small dyn-del" title="<?= h(__('create.remove')) ?>">✕</button>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <p><button type="button" class="btn-sec btn-small" id="add-participant"><?= h(__('create.add_participant')) ?></button></p>
 
-  <label for="slots"><?= h(__('create.slots_label')) ?> <span class="muted"><?= h(__('create.slots_hint')) ?></span></label>
-  <textarea id="slots" name="slots" rows="4" placeholder="2026-09-15, 12:30, 90&#10;2026-09-16, 13:00, 90"><?= h($old['slots']) ?></textarea>
+  <h2><?= h(__('create.slots_label')) ?> <span class="muted">(<?= h(__('create.slots_hint')) ?>)</span></h2>
+  <div id="slots">
+    <?php foreach ($sRows as $r): ?>
+    <div class="dyn-row">
+      <input type="date" name="sdate[]" value="<?= h($r['date']) ?>">
+      <input type="time" name="stime[]" value="<?= h($r['time']) ?>">
+      <input type="number" name="sduration[]" min="15" step="15" value="<?= h($r['duration'] ?: '90') ?>" title="<?= h(__('resp.duration')) ?>">
+      <button type="button" class="btn-sec btn-small dyn-del" title="<?= h(__('create.remove')) ?>">✕</button>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <p><button type="button" class="btn-sec btn-small" id="add-slot"><?= h(__('create.add_slot')) ?></button></p>
 
   <label style="font-weight:400;margin-top:14px;">
     <input type="checkbox" name="organizer_participates" value="1" style="width:auto;display:inline;" <?= !empty($_POST['organizer_participates']) ? 'checked' : '' ?>>
@@ -108,5 +150,34 @@ foreach ($errors as $e) {
 
   <p style="margin-top:16px;"><button type="submit"><?= h(__('create.submit')) ?></button></p>
 </form>
+<script>
+(function () {
+  function clone(container) {
+    var rows = container.querySelectorAll('.dyn-row');
+    var last = rows[rows.length - 1];
+    var copy = last.cloneNode(true);
+    copy.querySelectorAll('input').forEach(function (i) {
+      if (i.type !== 'number') { i.value = ''; }
+    });
+    container.appendChild(copy);
+    var first = copy.querySelector('input');
+    if (first) { first.focus(); }
+  }
+  document.getElementById('add-participant').addEventListener('click', function () {
+    clone(document.getElementById('participants'));
+  });
+  document.getElementById('add-slot').addEventListener('click', function () {
+    clone(document.getElementById('slots'));
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.classList.contains('dyn-del')) {
+      var container = e.target.closest('.dyn-row').parentNode;
+      if (container.querySelectorAll('.dyn-row').length > 1) {
+        e.target.closest('.dyn-row').remove();
+      }
+    }
+  });
+})();
+</script>
 <?php
 page_footer();

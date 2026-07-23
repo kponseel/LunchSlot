@@ -14,7 +14,10 @@ l'invitation calendrier part automatiquement, et pendant la phase de décision l
 candidats sont **pré-bloqués** dans l'agenda de chaque participant pour éviter qu'une assistante
 réserve par-dessus.
 
-`LunchSlot` est le nom produit ; l'implémentation existante (`dejeuner-pro/`) en est la v1.
+`LunchSlot` est le nom produit **et** le nom de l'arborescence cible : **renommage complet** de la
+v1 `dejeuner-pro/` vers `lunchslot/` (décision §12.1). Le nom « Déjeuner Pro » disparaît de l'UI,
+des emails, des chemins et de la documentation. La seule précaution associée est une **redirection de
+compatibilité** pour ne pas casser les liens déjà envoyés (voir §3.7).
 
 ---
 
@@ -111,6 +114,18 @@ déjeuner est un bug visible.
 - Le **schéma SQLite existant** ne doit pas casser : les évolutions passent par des **migrations
   automatiques au démarrage** (création de tables/colonnes si absentes, sans destruction).
 - Le rattachement des déjeuners existants à un organisateur se fait **par l'email organisateur**.
+
+**Conséquence du renommage `dejeuner-pro/` → `lunchslot/` (décision §12.1).** Le changement de nom
+produit (UI, emails, doc) est purement cosmétique et sans risque. En revanche, **changer le chemin de
+déploiement** casserait les liens à jeton **déjà envoyés** qui pointent vers l'ancien dossier
+(`.../dejeuner-pro/respond.php?...`, `.../dejeuner-pro/admin.php?...`). Pour respecter la contrainte
+« ne pas casser les liens existants » :
+- prévoir une **redirection de compatibilité** de l'ancien chemin vers le nouveau (par ex. `.htaccess`
+  `RewriteRule ^dejeuner-pro/(.*)$ /lunchslot/$1 [R=301,L]`, ou un dossier-stub `dejeuner-pro/` qui
+  redirige), **conservée tant que des liens anciens peuvent circuler** ;
+- le renommage de dossier n'a **aucun impact** sur le schéma SQLite ni sur la valeur des jetons : seuls
+  les **URLs** changent, pas les données. Les jetons restent identiques et valides.
+- Les **nouveaux** emails générés utilisent directement le chemin `lunchslot/`.
 
 ---
 
@@ -285,7 +300,7 @@ purge des magic links expirés/consommés au fil de l'eau.
 
 ## 10. Périmètre de l'évolution vs existant
 
-**Déjà couvert par la v1 (`dejeuner-pro/`)** — à ne pas casser :
+**Déjà couvert par la v1 (`dejeuner-pro/`, renommée `lunchslot/`)** — à ne pas casser :
 pages index/admin/respond · `cron_relance.php` · génération `.ics` RFC 5545 validée
 (REQUEST/CANCEL, séquences, placeholders `TENTATIVE` à UID déterministes) · liens Google Calendar ·
 mailer `mail()`/SMTP/log · propositions de créneaux par les participants ·
@@ -321,8 +336,10 @@ désistement/réouverture/re-confirmation.
 
 ## 12. Points ouverts à valider avec le porteur
 
-1. **Nom & arborescence** : garde-t-on le dossier `dejeuner-pro/` (compatibilité chemins/liens
-   existants) tout en nommant le produit « LunchSlot » en surface (UI, emails) ? Ou renommage complet ?
+1. **Nom & arborescence** — ✅ **TRANCHÉ : renommage complet en LunchSlot.** Produit et dossier
+   deviennent `lunchslot/` ; « Déjeuner Pro » disparaît de l'UI, des emails et de la doc. Précaution
+   retenue : redirection de compatibilité `dejeuner-pro/ → lunchslot/` pour préserver les liens à
+   jeton déjà envoyés (détail §3.7).
 2. **Créneau proposé & unanimité** : un créneau tout neuf peut-il déclencher une confirmation dès que
    tous l'ont validé, sans délai de courtoisie ? (Recommandation : oui, règle unique et prévisible.)
 3. **Placeholders** : assume-t-on explicitement que le blocage est « en un clic » (incitatif) et non

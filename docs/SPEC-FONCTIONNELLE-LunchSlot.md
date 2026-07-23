@@ -1,6 +1,6 @@
 # LunchSlot — Spécification fonctionnelle & analyse du concept
 
-> **Statut :** document de conception (v0 — concept & spec, aucun développement).
+> **Statut :** document de conception (v1 — concept & spec, **décisions actées §12**, aucun développement).
 > **Périmètre de ce document :** cadrer la solution, poser le vocabulaire, la machine à états,
 > le modèle de données cible et les critères d'acceptation. **Aucun code n'est produit à ce stade.**
 
@@ -69,11 +69,16 @@ La confirmation automatique dépend d'une définition sans ambiguïté :
   confirmation entre normalement dans le calcul.
 - **Départage** : si plusieurs créneaux deviennent unanimes en même temps, on retient **le plus tôt**
   (date/heure de début la plus proche).
+- **L'organisateur n'est PAS votant par défaut** (décision §12.7) : il reçoit les invitations mais ne
+  compte pas dans « tous ». Une case **« je participe aussi »** à la création l'ajoute comme
+  participant à part entière (nom + email), et il vote alors comme les autres.
+- Le **proposeur d'un nouveau créneau** est **auto-marqué Disponible** sur le créneau qu'il propose.
 
-**[À trancher]** Un créneau **proposé par un participant** compte-t-il pour l'unanimité dès qu'il
-existe, ou seulement une fois que tous ont eu l'occasion de se positionner ? Recommandation : il
-compte comme tout créneau — unanime = tous ont coché Disponible dessus — donc un créneau tout neuf
-ne peut être unanime que si littéralement tout le monde l'a validé.
+**Créneau fraîchement proposé (décision §12.3) — TRANCHÉ : règle unique, aucun délai.** Un créneau
+proposé compte comme tout autre créneau : unanime = tous ont coché Disponible dessus. Pas de fenêtre
+de courtoisie — c'est le cœur du produit (zéro délai). Garde-fou naturel : un créneau tout neuf ne
+peut devenir unanime que si littéralement **tout le monde** l'a validé, donc jamais de « confirmation
+surprise » sur le dos d'un participant qui n'a pas répondu.
 
 ### 3.3 Idempotence & conditions de course
 « La dernière réponse rend le créneau unanime → confirmation instantanée » implique que l'évaluation
@@ -94,14 +99,29 @@ on borne pour éviter tout cycle (un créneau annulé pour cause de désistement
 re-déclencher immédiatement le même créneau).
 
 ### 3.5 Sécurité sur hébergement mutualisé
-- `data/` (SQLite) et `config.php` **inaccessibles en HTTP** : `.htaccess` de deny + emplacement
-  hors `public_html` si possible, noms non devinables en secours.
-- Jetons (participant, admin, magic link) **non devinables** : aléatoire cryptographique, longueur
-  suffisante, comparaison à temps constant.
-- **Magic link** : usage unique, expiration 15 min, invalidation à la consommation, **jamais** de
-  fuite d'information sur l'existence de l'adresse (message identique « si un compte existe, un lien
-  a été envoyé »), **rate-limiting** par adresse et par IP.
+Valeurs **tranchées** (décisions §12.4 à §12.6) :
+
+- **Protection `data/` + `config.php` — défense en profondeur (décision §12.5) :**
+  `.htaccess` `Require all denied` sur `data/` + refus des fichiers sensibles, **et** base SQLite à
+  **nom non devinable**, **et** emplacement **hors `public_html`** si l'arborescence Hostinger le
+  permet (bonus). On ne dépend jamais d'un seul mécanisme.
+- **Jetons** (participant, admin, magic link, session) **non devinables** : aléatoire cryptographique
+  (≥ 128 bits), comparaison à temps constant. Les jetons **magic link et session** sont stockés
+  **hashés** en base (jamais en clair).
+- **Magic link (décision §12.6) :** usage unique, **expiration 15 min**, invalidation à la
+  consommation. **Rate-limiting : max 3 envois / email / 15 min** et **~10 / IP / heure**. Réponse
+  **toujours identique** — « si un compte existe, un email de connexion a été envoyé » — quel que soit
+  le résultat, pour **ne jamais révéler** si l'adresse est connue.
+- **Session organisateur (décision §12.6) :** cookie **`HttpOnly` + `Secure` + `SameSite=Lax`**
+  (Lax laisse fonctionner l'arrivée depuis un lien email), jeton **stocké hashé**, **expiration
+  absolue 30 j**, **déconnexion = suppression de la ligne** (révocation immédiate).
+- **Normalisation email organisateur (décision §12.4) : minimale et sûre** → `trim` + minuscules
+  **uniquement**. On ne déduplique **pas** les points Gmail ni les alias `+tag` (spécifique fournisseur
+  et risque de faire correspondre deux personnes distinctes → usurpation).
+- **CSRF :** jeton anti-CSRF sur **tous les POST** (réponse participant, création, actions dashboard,
+  demande de magic link).
 - Requêtes préparées partout, échappement HTML systématique en sortie.
+- **Purge** au fil de l'eau des magic links consommés/expirés et des sessions expirées.
 
 ### 3.6 Exactitude fuseau horaire
 Affichage en **Europe/Paris** (configurable), mais **UTC exact** dans les `.ics` (`DTSTART`/`DTEND` en
@@ -138,10 +158,11 @@ déploiement** casserait les liens à jeton **déjà envoyés** qui pointent ver
 - Le clic ouvre une **session durable (~30 jours)**, déconnexion possible.
 - Espace **« Mes déjeuners »** : liste de tous ses déjeuners (à venir / passés) avec **statut**
   (en attente de réponses · confirmé · annulé) et accès au tableau de bord de chacun.
-- La **création** d'un déjeuner **requiert d'être connecté**.
+- La **création** d'un déjeuner **requiert d'être connecté** ; une case **« je participe aussi »**
+  permet à l'organisateur de se compter comme participant votant (voir §3.2).
 - Les **liens d'administration à jeton** existants restent valables (compatibilité).
-- Anti-abus : fréquence d'envoi de magic links limitée par adresse ; **ne jamais révéler** si une
-  adresse est connue.
+- Anti-abus : **max 3 magic links / email / 15 min** et **~10 / IP / heure** ; **ne jamais révéler**
+  si une adresse est connue (réponse identique dans tous les cas). Détails §3.5.
 
 ### 4.2 Participant
 - **Aucun compte.** Agit uniquement via un **lien personnel à jeton unique** reçu par email.
@@ -334,18 +355,38 @@ désistement/réouverture/re-confirmation.
 
 ---
 
-## 12. Points ouverts à valider avec le porteur
+## 12. Décisions actées
 
-1. **Nom & arborescence** — ✅ **TRANCHÉ : renommage complet en LunchSlot.** Produit et dossier
-   deviennent `lunchslot/` ; « Déjeuner Pro » disparaît de l'UI, des emails et de la doc. Précaution
-   retenue : redirection de compatibilité `dejeuner-pro/ → lunchslot/` pour préserver les liens à
-   jeton déjà envoyés (détail §3.7).
-2. **Créneau proposé & unanimité** : un créneau tout neuf peut-il déclencher une confirmation dès que
-   tous l'ont validé, sans délai de courtoisie ? (Recommandation : oui, règle unique et prévisible.)
-3. **Placeholders** : assume-t-on explicitement que le blocage est « en un clic » (incitatif) et non
-   « automatique garanti » côté Gmail/Google ? (Impact sur le texte des emails.)
-4. **Portée du magic link** : un organisateur = un email ; que fait-on si un déjeuner a été créé avec
-   un email organisateur légèrement différent (casse, alias) → normalisation ?
-5. **Emplacement `data/` / `config.php`** sur l'hébergement Hostinger visé : hors `public_html`
-   possible, ou protection uniquement par `.htaccess` ?
+Tous les points ouverts ont été **tranchés** (validés par le porteur). Ils font désormais foi pour
+le développement.
+
+1. **Nom & arborescence** — ✅ **Renommage complet en LunchSlot.** Produit et dossier deviennent
+   `lunchslot/` ; « Déjeuner Pro » disparaît de l'UI, des emails et de la doc. Redirection de
+   compatibilité `dejeuner-pro/ → lunchslot/` pour préserver les liens à jeton déjà envoyés (§3.7).
+2. **Discours placeholders** — ✅ **« Blocage en un clic » (incitatif), pas « automatique ».** Les
+   emails invitent explicitement à ajouter les créneaux à l'agenda ; lien Google mis en avant (canal
+   fiable), PJ `.ics` en complément pour Outlook. On ne promet aucun blocage automatique universel
+   (§3.1).
+3. **Créneau proposé & unanimité** — ✅ **Règle unique, aucun délai.** Unanime = tous ont coché
+   Disponible ; un créneau neuf est confirmable dès que littéralement tout le monde l'a validé (§3.2).
+4. **Normalisation email organisateur** — ✅ **Minimale et sûre : `trim` + minuscules uniquement.**
+   Pas de déduplication des points Gmail ni des alias `+tag` (risque d'usurpation) (§3.5).
+5. **Protection `data/` / `config.php`** — ✅ **Défense en profondeur :** `.htaccess` `Require all
+   denied` + nom de base non devinable + hors `public_html` si possible (§3.5).
+6. **Anti-abus magic link & session** — ✅ Magic link : usage unique, **15 min**, **3 / email / 15 min**,
+   **~10 / IP / h**, réponse non divulgante, jeton **hashé**. Session : cookie
+   **HttpOnly+Secure+SameSite=Lax**, **30 j** absolus, jeton **hashé**, déconnexion = révocation (§3.5).
+7. **Organisateur votant ?** — ✅ **Non par défaut** (destinataire seulement) ; case **« je participe
+   aussi »** pour le compter comme participant votant (§3.2, §4.1).
+
+### 12.1 Défauts retenus sur les zones laissées implicites par le brief
+
+| Sujet | Décision |
+|---|---|
+| **CSRF** | Jeton anti-CSRF sur tous les POST (§3.5). |
+| **Ajout d'un participant après confirmation** | Interdit tant que « confirmé » ; possible seulement en « en attente ». |
+| **Deadline atteinte sans aucune unanimité** | Rapport unique à l'organisateur (§6.6) ; déjeuner reste « en attente » jusqu'à action manuelle. |
+| **Proposeur d'un créneau** | Auto-marqué « Disponible » sur le créneau proposé (§3.2). |
+| **Rétention / RGPD** | Purge des magic links consommés/expirés et sessions expirées ; aucune donnée sensible au-delà de nom + email. |
+| **Idempotence confirmation** | Transaction SQLite + garde sur le statut → jamais deux confirmations ni emails en double (§3.3). |
 ```

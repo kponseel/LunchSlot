@@ -1,0 +1,24 @@
+# LunchSlot — protection & en-têtes (Apache / hébergement mutualisé)
+
+# Empêche l'accès direct aux fichiers sensibles.
+<FilesMatch "^(config(\.example)?\.php|.*\.sqlite.*)$">
+    Require all denied
+</FilesMatch>
+
+# Bloque tout le contenu de data/ (base SQLite, journaux mail).
+RedirectMatch 404 ^/.*/data/.*$
+
+# Les fichiers d'inclusion ne sont jamais des points d'entrée.
+<FilesMatch "\.(inc\.php)$">
+    Require all denied
+</FilesMatch>
+
+# En-têtes de sécurité de base.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "same-origin"
+</IfModule>
+
+# Page d'accueil par défaut.
+DirectoryIndex index.php

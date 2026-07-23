@@ -14,10 +14,9 @@ l'invitation calendrier part automatiquement, et pendant la phase de décision l
 candidats sont **pré-bloqués** dans l'agenda de chaque participant pour éviter qu'une assistante
 réserve par-dessus.
 
-`LunchSlot` est le nom produit **et** le nom de l'arborescence cible : **renommage complet** de la
-v1 `dejeuner-pro/` vers `lunchslot/` (décision §12.1). Le nom « Déjeuner Pro » disparaît de l'UI,
-des emails, des chemins et de la documentation. La seule précaution associée est une **redirection de
-compatibilité** pour ne pas casser les liens déjà envoyés (voir §3.7).
+`LunchSlot` est le nom produit **et** le nom de l'arborescence : toute l'application vit dans
+`lunchslot/`. Le projet est développé **from scratch** (aucune v1 héritée) ; il n'existe aucun autre
+nom de code ni lien historique à préserver.
 
 ---
 
@@ -129,23 +128,14 @@ Affichage en **Europe/Paris** (configurable), mais **UTC exact** dans les `.ics`
 conversions doivent tenir compte de l'heure d'été/hiver — un décalage d'une heure sur une invitation
 déjeuner est un bug visible.
 
-### 3.7 Compatibilité ascendante (contrainte forte)
-- Les **liens à jeton existants** (admin et participant) doivent rester valables.
-- Le **schéma SQLite existant** ne doit pas casser : les évolutions passent par des **migrations
-  automatiques au démarrage** (création de tables/colonnes si absentes, sans destruction).
-- Le rattachement des déjeuners existants à un organisateur se fait **par l'email organisateur**.
-
-**Conséquence du renommage `dejeuner-pro/` → `lunchslot/` (décision §12.1).** Le changement de nom
-produit (UI, emails, doc) est purement cosmétique et sans risque. En revanche, **changer le chemin de
-déploiement** casserait les liens à jeton **déjà envoyés** qui pointent vers l'ancien dossier
-(`.../dejeuner-pro/respond.php?...`, `.../dejeuner-pro/admin.php?...`). Pour respecter la contrainte
-« ne pas casser les liens existants » :
-- prévoir une **redirection de compatibilité** de l'ancien chemin vers le nouveau (par ex. `.htaccess`
-  `RewriteRule ^dejeuner-pro/(.*)$ /lunchslot/$1 [R=301,L]`, ou un dossier-stub `dejeuner-pro/` qui
-  redirige), **conservée tant que des liens anciens peuvent circuler** ;
-- le renommage de dossier n'a **aucun impact** sur le schéma SQLite ni sur la valeur des jetons : seuls
-  les **URLs** changent, pas les données. Les jetons restent identiques et valides.
-- Les **nouveaux** emails générés utilisent directement le chemin `lunchslot/`.
+### 3.7 Robustesse du schéma & accès par jeton
+- **Accès par jeton** : chaque participant a un lien personnel à jeton unique ; le tableau de bord est
+  accessible soit via **session organisateur**, soit via un **jeton d'administration** du déjeuner
+  (lien partageable). Les jetons sont non devinables et stockés en base.
+- **Migrations automatiques au démarrage** : le schéma évolue par ajout de tables/colonnes si absentes,
+  **sans destruction** — un déploiement par simple upload doit pouvoir mettre à jour la base tout seul.
+- Le rattachement d'un déjeuner à un organisateur se fait **par l'email organisateur** (normalisé,
+  §3.5) ; « Mes déjeuners » liste les déjeuners de l'organisateur en session.
 
 ---
 
@@ -274,7 +264,7 @@ Script exécutable en **tâche cron hPanel** :
 | 9 | Annulation du déjeuner | tous | `CANCEL` | — |
 | 10 | Rapport d'échéance | organisateur | — | — |
 
-**Règles transverses :** toutes en **français**, **HTML sobre + version texte**,
+**Règles transverses :** **bilingues FR/EN** (langue du déjeuner), **HTML sobre + version texte**,
 **`Reply-To` = organisateur** pour les emails aux participants, **PJ `.ics`** dès qu'un événement est
 en jeu, **lien Google Calendar systématique** à côté de chaque `.ics`.
 
@@ -311,7 +301,10 @@ purge des magic links expirés/consommés au fil de l'eau.
 - **Hébergement mutualisé Hostinger** : **PHP 8 + SQLite**, **aucun build**, **aucun composer** sur
   le serveur, **déployable par simple upload** (File Manager hPanel), **cron via hPanel**.
 - **Emails** : `mail()` par défaut, **SMTP configurable** dans un fichier de config simple.
-- **UI 100 % française**, responsive, sobre et professionnelle.
+- **UI bilingue FR/EN**, responsive, sobre et professionnelle. Langue **détectée automatiquement**
+  d'après les préférences du navigateur (`Accept-Language`), avec surcharge manuelle (sélecteur +
+  cookie). Les emails d'un déjeuner partent dans la langue choisie à sa création ; le magic link suit
+  la langue du navigateur du demandeur.
 - **Fuseau Europe/Paris** (configurable) ; **conversions UTC exactes** dans les `.ics` et les liens
   Google.
 - **Sécurité** : jetons non devinables ; magic links à usage unique et expirants ; `data/` et
@@ -319,22 +312,23 @@ purge des magic links expirés/consommés au fil de l'eau.
 
 ---
 
-## 10. Périmètre de l'évolution vs existant
+## 10. Périmètre de développement (from scratch)
 
-**Déjà couvert par la v1 (`dejeuner-pro/`, renommée `lunchslot/`)** — à ne pas casser :
-pages index/admin/respond · `cron_relance.php` · génération `.ics` RFC 5545 validée
-(REQUEST/CANCEL, séquences, placeholders `TENTATIVE` à UID déterministes) · liens Google Calendar ·
-mailer `mail()`/SMTP/log · propositions de créneaux par les participants ·
-désistement/réouverture/re-confirmation.
+Tout est à construire dans `lunchslot/` :
 
-**À ajouter (objet de cette évolution) :**
-1. **Authentification organisateur par magic link** (login, jeton usage unique 15 min, session 30 j,
-   déconnexion, anti-abus, non-divulgation).
-2. **Espace « Mes déjeuners »** (liste à venir/passés, statut, accès dashboard, rattachement par
-   email organisateur).
-3. **Garde d'accès** : création de déjeuner conditionnée à une session valide, **tout en gardant**
-   les liens admin à jeton fonctionnels.
-4. **Migrations automatiques** au démarrage pour les nouvelles tables.
+1. **Cœur métier** : création de déjeuner, réponses participants, moteur d'**unanimité** et
+   **confirmation automatique**, propositions de créneaux, **désistement/réouverture/re-confirmation**.
+2. **Génération `.ics`** RFC 5545 (`REQUEST`/`CANCEL`/placeholders `TENTATIVE`), **UID déterministes**
+   par (participant, créneau), **SEQUENCE** incrémentée, et **liens Google Calendar** en parallèle.
+3. **Mailer** `mail()` par défaut, **SMTP configurable**, mode **log** pour les tests ; HTML + texte,
+   `Reply-To` = organisateur.
+4. **Authentification organisateur par magic link** (jeton usage unique 15 min, session 30 j,
+   déconnexion, anti-abus, non-divulgation) + espace **« Mes déjeuners »**.
+5. **Tableau de bord organisateur** (matrice, bilans, actions) accessible par session **ou** jeton
+   d'administration.
+6. **Cron** de relances + rapport d'échéance.
+7. **Migrations automatiques** au démarrage ; **sécurité** (protection `data/`/`config.php`, CSRF,
+   requêtes préparées, échappement, jetons hashés).
 
 ---
 
@@ -360,9 +354,9 @@ désistement/réouverture/re-confirmation.
 Tous les points ouverts ont été **tranchés** (validés par le porteur). Ils font désormais foi pour
 le développement.
 
-1. **Nom & arborescence** — ✅ **Renommage complet en LunchSlot.** Produit et dossier deviennent
-   `lunchslot/` ; « Déjeuner Pro » disparaît de l'UI, des emails et de la doc. Redirection de
-   compatibilité `dejeuner-pro/ → lunchslot/` pour préserver les liens à jeton déjà envoyés (§3.7).
+1. **Nom & arborescence** — ✅ **LunchSlot uniquement, développé from scratch.** Toute l'application
+   vit dans `lunchslot/` ; aucun autre nom de code, aucune v1 héritée, aucun lien historique à
+   préserver.
 2. **Discours placeholders** — ✅ **« Blocage en un clic » (incitatif), pas « automatique ».** Les
    emails invitent explicitement à ajouter les créneaux à l'agenda ; lien Google mis en avant (canal
    fiable), PJ `.ics` en complément pour Outlook. On ne promet aucun blocage automatique universel

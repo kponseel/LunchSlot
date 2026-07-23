@@ -27,6 +27,17 @@ production (blocage de `data/`, `config.php`, `*.inc.php`).
 > `app_url` (dans `config.php`) doit correspondre à l'URL réelle de service (ici
 > `http://localhost:8000`). En production, mettez l'URL publique complète.
 
+## Tests
+
+```bash
+php lunchslot/tests/run.php
+```
+
+Suite sans dépendance couvrant les 6 critères d'acceptation + cas limites (fuseau→UTC,
+idempotence de la confirmation, organisateur votant, désistement sans autre unanimité,
+confirmation manuelle, annulation, structure iCalendar). La base et les emails de test sont isolés
+dans un dossier temporaire (`LUNCHSLOT_DB`) — aucune donnée de dev n'est touchée.
+
 ## Déploiement Hostinger (hébergement mutualisé)
 
 1. Uploadez le dossier `lunchslot/` dans `public_html` (ou le sous-dossier voulu) via le File

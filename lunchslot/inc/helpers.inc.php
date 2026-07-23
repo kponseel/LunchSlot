@@ -31,6 +31,19 @@ function redirect(string $path): void
     exit;
 }
 
+/** Chemin effectif de la base (surchargé par LUNCHSLOT_DB pour les tests). */
+function ls_db_path(): string
+{
+    $env = getenv('LUNCHSLOT_DB');
+    return ($env !== false && $env !== '') ? $env : (string) config('db_path');
+}
+
+/** Dossier de données (base + journaux mail). */
+function data_dir(): string
+{
+    return dirname(ls_db_path());
+}
+
 /** Horodatage UTC courant 'Y-m-d H:i:s'. */
 function now_utc(): string
 {

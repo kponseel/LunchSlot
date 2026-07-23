@@ -14,7 +14,7 @@ function db(): PDO
         return $pdo;
     }
 
-    $path = config('db_path');
+    $path = ls_db_path();
     $dir  = dirname($path);
     if (!is_dir($dir)) {
         mkdir($dir, 0770, true);

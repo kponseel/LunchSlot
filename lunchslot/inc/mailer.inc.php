@@ -88,7 +88,7 @@ function mime_name(string $name): string
 /** Transport 'log' : écrit l'email dans data/maillog/ au lieu de l'envoyer. */
 function mail_log(string $to, string $subject, array $headers, string $body): bool
 {
-    $dir = dirname(config('db_path')) . '/maillog';
+    $dir = data_dir() . '/maillog';
     if (!is_dir($dir)) {
         mkdir($dir, 0770, true);
     }

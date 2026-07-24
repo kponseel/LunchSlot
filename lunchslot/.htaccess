@@ -5,8 +5,9 @@
     Require all denied
 </FilesMatch>
 
-# Bloque tout le contenu de data/ (base SQLite, journaux mail).
-RedirectMatch 404 ^/.*/data/.*$
+# Bloque tout le contenu de data/ (base SQLite, journaux mail),
+# que l'app soit à la racine du domaine ou dans un sous-dossier.
+RedirectMatch 404 (^|/)data/
 
 # Les fichiers d'inclusion ne sont jamais des points d'entrée.
 <FilesMatch "\.(inc\.php)$">

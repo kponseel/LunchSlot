@@ -90,12 +90,10 @@ function start_session_for_organizer(int $organizerId): void
     $ins = db()->prepare('INSERT INTO sessions (organizer_id, token_hash, expires_at, created_at, last_seen_at) VALUES (?,?,?,?,?)');
     $ins->execute([$organizerId, token_hash($token), utc_plus($ttl), now_utc(), now_utc()]);
 
-    $https = (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
     setcookie(SESSION_COOKIE, $token, [
         'expires'  => time() + $ttl,
         'path'     => '/',
-        'secure'   => $https,
+        'secure'   => request_is_https(),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);

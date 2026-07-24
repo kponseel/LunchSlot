@@ -10,7 +10,8 @@ $sRows = [['date' => '', 'time' => '', 'duration' => '90']]; // lignes créneaux
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     foreach ($old as $k => $_) {
-        $old[$k] = trim((string) ($_POST[$k] ?? ''));
+        // Champs sur une seule ligne : neutralise CR/LF (anti-injection d'en-têtes email).
+        $old[$k] = ($k === 'deadline') ? trim((string) ($_POST[$k] ?? '')) : clean_line((string) ($_POST[$k] ?? ''));
     }
     $participates = !empty($_POST['organizer_participates']);
 
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sdur = $_POST['sduration'] ?? [];
     $pRows = [];
     for ($i = 0; $i < max(count($pn), count($pe)); $i++) {
-        $pRows[] = ['name' => trim((string) ($pn[$i] ?? '')), 'email' => trim((string) ($pe[$i] ?? ''))];
+        $pRows[] = ['name' => clean_line((string) ($pn[$i] ?? '')), 'email' => clean_line((string) ($pe[$i] ?? ''))];
     }
     $sRows = [];
     for ($i = 0; $i < max(count($sd), count($stime)); $i++) {

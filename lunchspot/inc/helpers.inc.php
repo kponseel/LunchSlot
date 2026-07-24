@@ -188,3 +188,31 @@ function client_ip(): string
 {
     return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 }
+
+/**
+ * Détecte HTTPS, y compris derrière un proxy/load-balancer (Hostinger) qui
+ * signale le schéma via X-Forwarded-Proto. Sert à poser le flag Secure des cookies.
+ */
+function request_is_https(): bool
+{
+    if (($_SERVER['HTTPS'] ?? '') !== '' && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+    if (($_SERVER['SERVER_PORT'] ?? '') === '443') {
+        return true;
+    }
+    $xf = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    if ($xf === 'https') {
+        return true;
+    }
+    // Repli : si app_url est en https, on considère la prod comme sécurisée.
+    return str_starts_with((string) config('app_url', ''), 'https://');
+}
+
+/** Nettoie une saisie sur une seule ligne : trim + suppression des CR/LF et caractères de contrôle. */
+function clean_line(string $s): string
+{
+    $s = str_replace(["\r", "\n", "\t"], ' ', $s);
+    $s = preg_replace('/[\x00-\x1f\x7f]/u', '', $s) ?? '';
+    return trim($s);
+}

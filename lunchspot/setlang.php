@@ -5,12 +5,10 @@ $lang = (string) ($_GET['lang'] ?? 'fr');
 if (!in_array($lang, SUPPORTED_LOCALES, true)) {
     $lang = 'fr';
 }
-$https = (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off')
-    || (($_SERVER['SERVER_PORT'] ?? '') === '443');
 setcookie('ls_lang', $lang, [
     'expires'  => time() + 365 * 86400,
     'path'     => '/',
-    'secure'   => $https,
+    'secure'   => request_is_https(),
     'httponly' => false,
     'samesite' => 'Lax',
 ]);

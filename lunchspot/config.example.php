@@ -10,6 +10,10 @@ return [
     // Nom affiché du produit.
     'app_name' => 'LunchSpot',
 
+    // Affichage des erreurs PHP à l'écran. false en production (recommandé) :
+    // les erreurs vont dans les logs, pas dans la page. true seulement pour déboguer.
+    'debug' => false,
+
     // URL de base publique, SANS slash final.
     // Sert à construire les liens absolus dans les emails.
     // Ex. production : 'https://exemple.com/lunchspot'

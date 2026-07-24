@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $do = (string) ($_POST['do'] ?? '');
 
-    if ($do === 'addslot' && $lunch['status'] !== 'annule') {
+    if ($do === 'addslot' && $lunch['status'] === 'en_attente') {
         $date = trim((string) ($_POST['date'] ?? ''));
         $time = trim((string) ($_POST['time'] ?? ''));
         $dur = (int) ($_POST['duration'] ?? 90) ?: 90;
@@ -185,7 +185,8 @@ foreach ($participants as $p) {
     }
     echo '</td>';
     echo '<td><span class="badge ' . $badgeCls . '">' . h($state) . '</span></td>';
-    echo '<td><span class="copy">' . h($purl) . '</span></td>';
+    echo '<td><span class="copy">' . h($purl) . '</span> '
+        . '<button type="button" class="btn-small btn-sec ls-copy" data-copy="' . h($purl) . '">' . h(__('dash.copy_btn')) . '</button></td>';
     echo '<td>';
     if ((int) $p['is_organizer'] === 0) {
         echo '<form method="post" class="inline" style="margin:0 4px 4px 0;">' . csrf_field()
@@ -202,19 +203,30 @@ foreach ($participants as $p) {
 echo '</tbody></table>';
 echo '<p class="muted">* ' . h(__('dash.you_participate')) . '</p>';
 
-/* ---- Ajouter un créneau + annuler ---- */
-if ($lunch['status'] !== 'annule') {
+/* ---- Ajouter un créneau (seulement en attente) ---- */
+if ($lunch['status'] === 'en_attente') {
     echo '<h2>' . h(__('dash.addslot_h2')) . '</h2>';
     echo '<form method="post" class="card">' . csrf_field() . '<input type="hidden" name="do" value="addslot">';
     echo '<div class="row"><div><label>' . h(__('resp.date')) . '</label><input type="date" name="date"></div>'
         . '<div><label>' . h(__('resp.time')) . '</label><input type="time" name="time"></div>'
         . '<div><label>' . h(__('resp.duration')) . '</label><input type="number" name="duration" value="90" min="15" step="15"></div></div>';
     echo '<p style="margin-top:12px;"><button type="submit">' . h(__('dash.addslot_btn')) . '</button></p></form>';
+}
 
+/* ---- Annuler le déjeuner (tant qu'il n'est pas déjà annulé) ---- */
+if ($lunch['status'] !== 'annule') {
     echo '<h2>' . h(__('dash.cancel_h2')) . '</h2>';
     echo '<form method="post" onsubmit="return confirm(' . h(json_encode(__('dash.cancel_confirm_js'))) . ');">' . csrf_field()
         . '<input type="hidden" name="do" value="cancel">'
         . '<button type="submit" class="btn-danger">' . h(__('dash.cancel_btn')) . '</button></form>';
 }
+
+// Copie des liens de réponse en un clic (amélioration progressive).
+echo '<script>(function(){var L=' . json_encode(__('dash.copied')) . ';document.addEventListener("click",function(e){'
+    . 'var b=e.target.closest(".ls-copy");if(!b)return;var t=b.getAttribute("data-copy");'
+    . 'var done=function(){var o=b.textContent;b.textContent=L;setTimeout(function(){b.textContent=o;},1500);};'
+    . 'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){});}'
+    . 'else{var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(_){}document.body.removeChild(ta);done();}'
+    . '});})();</script>';
 
 page_footer();

@@ -1,18 +1,20 @@
 <?php
 /**
- * Routeur pour le serveur PHP intégré (dév/test) :
- *   php -S localhost:8000 -t lunchspot lunchspot/router.php
+ * Routeur pour le serveur PHP intégré (dév/test), l'appli étant à la racine :
+ *   php -S localhost:8000 router.php
  *
- * Reproduit les protections du .htaccess (data/, config.php, *.inc.php) que le
- * serveur intégré n'applique pas. En production Apache, ce fichier est inutile.
+ * Reproduit les protections du .htaccess (data/, config.php, *.inc.php, .git,
+ * tests/, docs/) que le serveur intégré n'applique pas. En production Apache,
+ * ce fichier est inutile.
  */
 
 declare(strict_types=1);
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
-// Bloque l'accès aux ressources sensibles.
+// Bloque l'accès aux ressources sensibles / non destinées au web.
 if (preg_match('#(^|/)(data/|config\.php|config\.example\.php)#', $uri)
+    || preg_match('#(^|/)(\.git|\.github|tests|docs)(/|$)#', $uri)
     || preg_match('#\.inc\.php$#', $uri)
     || preg_match('#\.sqlite#', $uri)) {
     http_response_code(404);

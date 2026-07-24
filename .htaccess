@@ -9,6 +9,10 @@
 # que l'app soit à la racine du domaine ou dans un sous-dossier.
 RedirectMatch 404 (^|/)data/
 
+# L'appli étant à la racine web, on masque les dossiers du dépôt qui ne sont
+# pas destinés au web (dépôt Git, CI, tests, docs).
+RedirectMatch 404 (^|/)(\.git|\.github|tests|docs)(/|$)
+
 # Les fichiers d'inclusion ne sont jamais des points d'entrée.
 <FilesMatch "\.(inc\.php)$">
     Require all denied

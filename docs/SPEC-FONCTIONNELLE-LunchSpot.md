@@ -14,9 +14,9 @@ l'invitation calendrier part automatiquement, et pendant la phase de décision l
 candidats sont **pré-bloqués** dans l'agenda de chaque participant pour éviter qu'une assistante
 réserve par-dessus.
 
-`LunchSpot` est le nom produit **et** le nom de l'arborescence : toute l'application vit dans
-`lunchspot/`. Le projet est développé **from scratch** (aucune v1 héritée) ; il n'existe aucun autre
-nom de code ni lien historique à préserver.
+`LunchSpot` est le nom produit ; l'application est développée **from scratch** (aucune v1 héritée),
+directement **à la racine du dépôt** (déployable tel quel dans un `public_html`). Il n'existe aucun
+autre nom de code ni lien historique à préserver.
 
 ---
 
@@ -314,7 +314,7 @@ purge des magic links expirés/consommés au fil de l'eau.
 
 ## 10. Périmètre de développement (from scratch)
 
-Tout est à construire dans `lunchspot/` :
+Tout est développé à la racine du dépôt :
 
 1. **Cœur métier** : création de déjeuner, réponses participants, moteur d'**unanimité** et
    **confirmation automatique**, propositions de créneaux, **désistement/réouverture/re-confirmation**.
@@ -355,7 +355,7 @@ Tous les points ouverts ont été **tranchés** (validés par le porteur). Ils f
 le développement.
 
 1. **Nom & arborescence** — ✅ **LunchSpot uniquement, développé from scratch.** Toute l'application
-   vit dans `lunchspot/` ; aucun autre nom de code, aucune v1 héritée, aucun lien historique à
+   vit à la racine du dépôt ; aucun autre nom de code, aucune v1 héritée, aucun lien historique à
    préserver.
 2. **Discours placeholders** — ✅ **« Blocage en un clic » (incitatif), pas « automatique ».** Les
    emails invitent explicitement à ajouter les créneaux à l'agenda ; lien Google mis en avant (canal

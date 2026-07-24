@@ -24,12 +24,12 @@ jobs:
           coverage: none
 
       - name: Prepare config
-        run: cp lunchspot/config.example.php lunchspot/config.php
+        run: cp config.example.php config.php
 
       - name: Lint (php -l) on all PHP files
         run: |
           set -e
-          find lunchspot -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+          find . -path ./.git -prune -o -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
 
       - name: Run test suite
-        run: php lunchspot/tests/run.php
+        run: php tests/run.php

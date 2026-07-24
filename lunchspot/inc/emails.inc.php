@@ -32,7 +32,7 @@ function with_locale(string $loc, callable $fn)
 
 function email_html(string $heading, string $bodyHtml): string
 {
-    $app = h(config('app_name', 'LunchSlot'));
+    $app = h(config('app_name', 'LunchSpot'));
     return '<!doctype html><html lang="' . h(current_locale()) . '"><head><meta charset="utf-8">'
         . '<meta name="viewport" content="width=device-width, initial-scale=1"></head>'
         . '<body style="margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222;">'
@@ -42,7 +42,7 @@ function email_html(string $heading, string $bodyHtml): string
         . '<h1 style="font-size:18px;margin:0 0 16px;">' . $heading . '</h1>'
         . $bodyHtml
         . '</div>'
-        . '<div style="color:#8a8f98;font-size:12px;margin-top:16px;">' . h(__('email.footer', ['app' => config('app_name', 'LunchSlot')])) . '</div>'
+        . '<div style="color:#8a8f98;font-size:12px;margin-top:16px;">' . h(__('email.footer', ['app' => config('app_name', 'LunchSpot')])) . '</div>'
         . '</div></body></html>';
 }
 
@@ -125,7 +125,7 @@ function send_placeholders(array $lunch, array $participant, array $available, a
                 'method' => 'REQUEST', 'uid' => $uid, 'sequence' => $seq, 'status' => 'TENTATIVE',
                 'start_utc' => $slot['start_utc'], 'duration_min' => (int) $slot['duration_min'],
                 'summary' => $prefix . ' ' . $lunch['title'],
-                'description' => $prefix . ' ' . config('app_name', 'LunchSlot'),
+                'description' => $prefix . ' ' . config('app_name', 'LunchSpot'),
                 'location' => $lunch['location'] ?? '',
                 'organizer_email' => $lunch['organizer_email'], 'organizer_name' => 'Organisateur',
                 'attendees' => [['email' => $participant['email'], 'name' => $participant['name']]],
@@ -213,7 +213,7 @@ function send_confirmation(array $lunch, array $slot, array $recipient, array $a
         $ics = ics_build([
             'method' => 'REQUEST', 'uid' => $uid, 'sequence' => $seq, 'status' => 'CONFIRMED',
             'start_utc' => $slot['start_utc'], 'duration_min' => (int) $slot['duration_min'],
-            'summary' => $lunch['title'], 'description' => config('app_name', 'LunchSlot'),
+            'summary' => $lunch['title'], 'description' => config('app_name', 'LunchSpot'),
             'location' => $lunch['location'] ?? '',
             'organizer_email' => $lunch['organizer_email'], 'organizer_name' => 'Organisateur',
             'attendees' => $allAttendees,
@@ -357,7 +357,7 @@ function send_deadline_report(array $lunch, array $missing): void
 /* 2. Magic link (langue = navigateur du demandeur). */
 function send_magic_link(string $email, string $link): void
 {
-    $app = config('app_name', 'LunchSlot');
+    $app = config('app_name', 'LunchSpot');
     $min = (int) config('magic_link_ttl_minutes', 15);
     $html = email_html(
         h(__('email.magic.heading')),

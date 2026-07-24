@@ -31,10 +31,10 @@ function redirect(string $path): void
     exit;
 }
 
-/** Chemin effectif de la base (surchargé par LUNCHSLOT_DB pour les tests). */
+/** Chemin effectif de la base (surchargé par LUNCHSPOT_DB pour les tests). */
 function ls_db_path(): string
 {
-    $env = getenv('LUNCHSLOT_DB');
+    $env = getenv('LUNCHSPOT_DB');
     return ($env !== false && $env !== '') ? $env : (string) config('db_path');
 }
 

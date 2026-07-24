@@ -1,8 +1,8 @@
-# LunchSlot — application
+# LunchSpot — application
 
 Planification de déjeuners professionnels multi-participants. **PHP 8 + SQLite**, sans build ni
 composer, déployable par simple upload de fichiers. Interface **bilingue FR/EN** (détection via le
-navigateur). Voir la spécification fonctionnelle : [`../docs/SPEC-FONCTIONNELLE-LunchSlot.md`](../docs/SPEC-FONCTIONNELLE-LunchSlot.md).
+navigateur). Voir la spécification fonctionnelle : [`../docs/SPEC-FONCTIONNELLE-LunchSpot.md`](../docs/SPEC-FONCTIONNELLE-LunchSpot.md).
 
 ## Idée cœur
 
@@ -15,12 +15,12 @@ navigateur). Voir la spécification fonctionnelle : [`../docs/SPEC-FONCTIONNELLE
 
 ```bash
 cd <racine du dépôt>
-cp lunchslot/config.example.php lunchslot/config.php   # puis ajustez si besoin
-php -S localhost:8000 -t lunchslot lunchslot/router.php
+cp lunchspot/config.example.php lunchspot/config.php   # puis ajustez si besoin
+php -S localhost:8000 -t lunchspot lunchspot/router.php
 ```
 
 Ouvrez http://localhost:8000. En transport email `log` (par défaut), aucun email n'est réellement
-envoyé : ils sont écrits dans `lunchslot/data/maillog/*.eml` (pratique pour les tests). Le
+envoyé : ils sont écrits dans `lunchspot/data/maillog/*.eml` (pratique pour les tests). Le
 `router.php` reproduit, pour le serveur intégré, les protections que `.htaccess` applique en
 production (blocage de `data/`, `config.php`, `*.inc.php`).
 
@@ -30,17 +30,17 @@ production (blocage de `data/`, `config.php`, `*.inc.php`).
 ## Tests
 
 ```bash
-php lunchslot/tests/run.php
+php lunchspot/tests/run.php
 ```
 
 Suite sans dépendance couvrant les 6 critères d'acceptation + cas limites (fuseau→UTC,
 idempotence de la confirmation, organisateur votant, désistement sans autre unanimité,
 confirmation manuelle, annulation, structure iCalendar). La base et les emails de test sont isolés
-dans un dossier temporaire (`LUNCHSLOT_DB`) — aucune donnée de dev n'est touchée.
+dans un dossier temporaire (`LUNCHSPOT_DB`) — aucune donnée de dev n'est touchée.
 
 ## Déploiement Hostinger (hébergement mutualisé)
 
-1. Uploadez le dossier `lunchslot/` dans `public_html` (ou le sous-dossier voulu) via le File
+1. Uploadez le dossier `lunchspot/` dans `public_html` (ou le sous-dossier voulu) via le File
    Manager hPanel.
 2. Copiez `config.example.php` en `config.php` et renseignez : `app_url`, `timezone`,
    `mail_transport` (`mail` ou `smtp`), les paramètres SMTP le cas échéant.
@@ -48,13 +48,13 @@ dans un dossier temporaire (`LUNCHSLOT_DB`) — aucune donnée de dev n'est touc
    migrations automatiques).
 4. `.htaccess` protège déjà `data/` et `config.php` en HTTP. En bonus, placez `data/` hors du
    dossier public si votre hébergement le permet et ajustez `db_path`.
-5. **Cron** (hPanel → Cron Jobs) : `php /home/USER/domains/…/lunchslot/cron_relance.php`
+5. **Cron** (hPanel → Cron Jobs) : `php /home/USER/domains/…/lunchspot/cron_relance.php`
    (par ex. toutes les heures) pour les relances et le rapport d'échéance.
 
 ## Structure
 
 ```
-lunchslot/
+lunchspot/
   index.php            Accueil + connexion (magic link)
   login.php verify.php logout.php   Flux d'authentification
   mes-dejeuners.php    Espace organisateur (liste)

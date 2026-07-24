@@ -1,7 +1,7 @@
 <?php
 /**
  * Routeur pour le serveur PHP intégré (dév/test) :
- *   php -S localhost:8000 -t lunchslot lunchslot/router.php
+ *   php -S localhost:8000 -t lunchspot lunchspot/router.php
  *
  * Reproduit les protections du .htaccess (data/, config.php, *.inc.php) que le
  * serveur intégré n'applique pas. En production Apache, ce fichier est inutile.

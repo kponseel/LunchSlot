@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 function page_header(string $title, ?array $organizer = null): void
 {
-    $app = h(config('app_name', 'LunchSlot'));
+    $app = h(config('app_name', 'LunchSpot'));
     header('Content-Type: text/html; charset=UTF-8');
     echo '<!doctype html><html lang="fr"><head><meta charset="utf-8">';
     echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
@@ -32,7 +32,7 @@ function page_header(string $title, ?array $organizer = null): void
 
 function page_footer(): void
 {
-    echo '</main><footer class="wrap muted">' . h(config('app_name', 'LunchSlot'))
+    echo '</main><footer class="wrap muted">' . h(config('app_name', 'LunchSpot'))
         . ' — ' . h(__('footer.tagline')) . '</footer></body></html>';
 }
 

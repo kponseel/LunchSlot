@@ -1,4 +1,4 @@
-# LunchSlot — Spécification fonctionnelle & analyse du concept
+# LunchSpot — Spécification fonctionnelle & analyse du concept
 
 > **Statut :** document de conception (v1 — concept & spec, **décisions actées §12**, aucun développement).
 > **Périmètre de ce document :** cadrer la solution, poser le vocabulaire, la machine à états,
@@ -8,14 +8,14 @@
 
 ## 1. En une phrase
 
-**LunchSlot** organise un déjeuner professionnel à 5–10 personnes en supprimant tout délai entre
+**LunchSpot** organise un déjeuner professionnel à 5–10 personnes en supprimant tout délai entre
 « tout le monde est d'accord » et « c'est dans les agendas » : dès qu'un créneau convient à tous,
 l'invitation calendrier part automatiquement, et pendant la phase de décision les créneaux
 candidats sont **pré-bloqués** dans l'agenda de chaque participant pour éviter qu'une assistante
 réserve par-dessus.
 
-`LunchSlot` est le nom produit **et** le nom de l'arborescence : toute l'application vit dans
-`lunchslot/`. Le projet est développé **from scratch** (aucune v1 héritée) ; il n'existe aucun autre
+`LunchSpot` est le nom produit **et** le nom de l'arborescence : toute l'application vit dans
+`lunchspot/`. Le projet est développé **from scratch** (aucune v1 héritée) ; il n'existe aucun autre
 nom de code ni lien historique à préserver.
 
 ---
@@ -32,8 +32,8 @@ déjà plus au moment où l'invitation calendrier est enfin envoyée. Deux cause
 2. **L'absence de réservation pendant la décision.** Tant que rien n'est confirmé, les créneaux
    candidats restent « libres » aux yeux des agendas → ils se font grignoter.
 
-### Ce que LunchSlot change
-| Cause | Réponse LunchSlot |
+### Ce que LunchSpot change
+| Cause | Réponse LunchSpot |
 |---|---|
 | Délai accord → invitation | **Confirmation automatique** : l'unanimité déclenche l'envoi de l'invite définitive, sans intervention humaine. |
 | Créneaux non réservés pendant la décision | **Placeholders TENTATIVE** : à chaque réponse, chaque créneau « Disponible » est pré-bloqué (.ics `STATUS:TENTATIVE` + lien Google Calendar). |
@@ -314,7 +314,7 @@ purge des magic links expirés/consommés au fil de l'eau.
 
 ## 10. Périmètre de développement (from scratch)
 
-Tout est à construire dans `lunchslot/` :
+Tout est à construire dans `lunchspot/` :
 
 1. **Cœur métier** : création de déjeuner, réponses participants, moteur d'**unanimité** et
    **confirmation automatique**, propositions de créneaux, **désistement/réouverture/re-confirmation**.
@@ -354,8 +354,8 @@ Tout est à construire dans `lunchslot/` :
 Tous les points ouverts ont été **tranchés** (validés par le porteur). Ils font désormais foi pour
 le développement.
 
-1. **Nom & arborescence** — ✅ **LunchSlot uniquement, développé from scratch.** Toute l'application
-   vit dans `lunchslot/` ; aucun autre nom de code, aucune v1 héritée, aucun lien historique à
+1. **Nom & arborescence** — ✅ **LunchSpot uniquement, développé from scratch.** Toute l'application
+   vit dans `lunchspot/` ; aucun autre nom de code, aucune v1 héritée, aucun lien historique à
    préserver.
 2. **Discours placeholders** — ✅ **« Blocage en un clic » (incitatif), pas « automatique ».** Les
    emails invitent explicitement à ajouter les créneaux à l'agenda ; lien Google mis en avant (canal

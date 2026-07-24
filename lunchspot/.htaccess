@@ -1,4 +1,4 @@
-# LunchSlot — protection & en-têtes (Apache / hébergement mutualisé)
+# LunchSpot — protection & en-têtes (Apache / hébergement mutualisé)
 
 # Empêche l'accès direct aux fichiers sensibles.
 <FilesMatch "^(config(\.example)?\.php|.*\.sqlite.*)$">

@@ -4,7 +4,7 @@
  * de l'intervalle anti-spam), et rapport d'échéance unique une fois la deadline
  * dépassée.
  *
- * hPanel : commande « php /chemin/lunchslot/cron_relance.php ».
+ * hPanel : commande « php /chemin/lunchspot/cron_relance.php ».
  * En web (optionnel) : protéger par ?key=... si souhaité.
  */
 
@@ -66,7 +66,7 @@ foreach ($lunches as $lunch) {
 
 purge_expired();
 
-$summary = "LunchSlot cron: {$remCount} relance(s), {$reportCount} rapport(s) d'échéance.";
+$summary = "LunchSpot cron: {$remCount} relance(s), {$reportCount} rapport(s) d'échéance.";
 if ($isCli) {
     echo $summary . PHP_EOL;
 } else {

@@ -1,4 +1,4 @@
-# LunchSlot
+# LunchSpot
 
 Application web de planification de déjeuners professionnels multi-participants.
 
@@ -7,7 +7,7 @@ calendrier, et bloquer les agendas des participants pendant la phase de décisio
 
 ## Documentation
 
-- [Spécification fonctionnelle & analyse du concept](docs/SPEC-FONCTIONNELLE-LunchSlot.md)
+- [Spécification fonctionnelle & analyse du concept](docs/SPEC-FONCTIONNELLE-LunchSpot.md)
 
 ## Stack cible
 

@@ -111,7 +111,7 @@ function i18n_dict(): array
         // Accueil / connexion
         'index.title' => 'Connexion',
         'index.h1' => 'Organisez un déjeuner en supprimant les allers-retours',
-        'index.pitch' => 'LunchSlot cale votre déjeuner professionnel à plusieurs : chacun indique ses disponibilités, les créneaux sont <strong>pré-bloqués dans les agendas</strong>, et dès qu\'une date convient à tout le monde, l\'<strong>invitation calendrier part automatiquement</strong>.',
+        'index.pitch' => 'LunchSpot cale votre déjeuner professionnel à plusieurs : chacun indique ses disponibilités, les créneaux sont <strong>pré-bloqués dans les agendas</strong>, et dès qu\'une date convient à tout le monde, l\'<strong>invitation calendrier part automatiquement</strong>.',
         'index.login_h2' => 'Connexion organisateur',
         'index.login_help' => 'Saisissez votre email : vous recevrez un lien de connexion à usage unique (valable :min minutes). Aucun mot de passe.',
         'index.email_label' => 'Votre email',
@@ -326,7 +326,7 @@ function i18n_dict(): array
 
         'index.title' => 'Sign in',
         'index.h1' => 'Schedule a lunch without the back-and-forth',
-        'index.pitch' => 'LunchSlot books your team lunch: everyone marks their availability, candidate slots are <strong>pre-blocked in calendars</strong>, and as soon as a time works for everyone the <strong>calendar invite is sent automatically</strong>.',
+        'index.pitch' => 'LunchSpot books your team lunch: everyone marks their availability, candidate slots are <strong>pre-blocked in calendars</strong>, and as soon as a time works for everyone the <strong>calendar invite is sent automatically</strong>.',
         'index.login_h2' => 'Organiser sign-in',
         'index.login_help' => 'Enter your email: you\'ll get a single-use sign-in link (valid for :min minutes). No password.',
         'index.email_label' => 'Your email',

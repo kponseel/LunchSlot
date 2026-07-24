@@ -95,7 +95,7 @@ function ics_build(array $p): string
 
     $lines = [];
     $lines[] = 'BEGIN:VCALENDAR';
-    $lines[] = 'PRODID:-//LunchSlot//FR';
+    $lines[] = 'PRODID:-//LunchSpot//FR';
     $lines[] = 'VERSION:2.0';
     $lines[] = 'CALSCALE:GREGORIAN';
     $lines[] = 'METHOD:' . $p['method'];

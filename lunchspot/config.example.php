@@ -1,6 +1,6 @@
 <?php
 /**
- * LunchSlot — configuration.
+ * LunchSpot — configuration.
  *
  * Copiez ce fichier en `config.php` et adaptez les valeurs.
  * `config.php` ne doit JAMAIS être accessible en HTTP (voir .htaccess).
@@ -8,11 +8,11 @@
 
 return [
     // Nom affiché du produit.
-    'app_name' => 'LunchSlot',
+    'app_name' => 'LunchSpot',
 
     // URL de base publique, SANS slash final.
     // Sert à construire les liens absolus dans les emails.
-    // Ex. production : 'https://exemple.com/lunchslot'
+    // Ex. production : 'https://exemple.com/lunchspot'
     // Ex. serveur PHP intégré : 'http://localhost:8000'
     'app_url' => 'http://localhost:8000',
 
@@ -20,18 +20,18 @@ return [
     'timezone' => 'Europe/Paris',
 
     // Chemin du fichier SQLite (créé automatiquement au premier lancement).
-    'db_path' => __DIR__ . '/data/lunchslot.sqlite',
+    'db_path' => __DIR__ . '/data/lunchspot.sqlite',
 
     // Domaine utilisé dans les UID iCalendar (partie après @). Doit être stable.
-    'ics_domain' => 'lunchslot.local',
+    'ics_domain' => 'lunchspot.local',
 
     // ---- Emails --------------------------------------------------------
     // Transport : 'log' (écrit dans data/maillog, aucun envoi — idéal en dev/test),
     //             'mail' (fonction mail() PHP), 'smtp' (voir smtp_* ci-dessous).
     'mail_transport' => 'log',
 
-    'mail_from'      => 'lunchslot@exemple.com',
-    'mail_from_name' => 'LunchSlot',
+    'mail_from'      => 'lunchspot@exemple.com',
+    'mail_from_name' => 'LunchSpot',
 
     // Utilisés si mail_transport = 'smtp'
     'smtp_host'     => '',

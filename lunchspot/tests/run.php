@@ -1,18 +1,18 @@
 <?php
 /**
- * Suite de tests LunchSlot (cœur métier + cas limites), sans dépendance.
+ * Suite de tests LunchSpot (cœur métier + cas limites), sans dépendance.
  *
- *   php lunchslot/tests/run.php
+ *   php lunchspot/tests/run.php
  *
  * Isolation : base SQLite + journaux mail dans un dossier temporaire dédié
- * (variable d'environnement LUNCHSLOT_DB) — n'altère jamais les données de dev.
+ * (variable d'environnement LUNCHSPOT_DB) — n'altère jamais les données de dev.
  */
 
 declare(strict_types=1);
 
-$tmp = sys_get_temp_dir() . '/lunchslot-test-' . getmypid();
+$tmp = sys_get_temp_dir() . '/lunchspot-test-' . getmypid();
 @mkdir($tmp, 0770, true);
-putenv('LUNCHSLOT_DB=' . $tmp . '/test.sqlite');
+putenv('LUNCHSPOT_DB=' . $tmp . '/test.sqlite');
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
 // Tampon de sortie : la suite écrit à l'écran ET exerce du code qui pose des
@@ -245,11 +245,20 @@ check('CANCEL calendrier envoyé', grepc('METHOD:CANCEL') > $before);
 
 /* ================= .ics bien formé ================= */
 echo "\n== H. Structure iCalendar (RFC 5545) ==\n";
-$d = last_dec();
-check('BEGIN/END VCALENDAR appariés', substr_count($d, 'BEGIN:VCALENDAR') === substr_count($d, 'END:VCALENDAR') && substr_count($d, 'BEGIN:VCALENDAR') >= 1);
-check('BEGIN/END VEVENT appariés', substr_count($d, 'BEGIN:VEVENT') === substr_count($d, 'END:VEVENT'));
-check('VERSION:2.0 présent', strpos($d, 'VERSION:2.0') !== false);
-check('DTSTAMP présent', strpos($d, 'DTSTAMP:') !== false);
+// Validation directe de la sortie du générateur (déterministe, sans décodage d'email).
+$ics = ics_build([
+    'method' => 'REQUEST', 'uid' => 'test-uid@' . config('ics_domain'), 'sequence' => 0, 'status' => 'CONFIRMED',
+    'start_utc' => '2026-09-15 10:30:00', 'duration_min' => 90,
+    'summary' => 'Test, déjeuner; caractères RFC', 'description' => 'ligne longue à replier ' . str_repeat('x', 80),
+    'location' => 'Paris', 'organizer_email' => 'o@ex.com', 'organizer_name' => 'O',
+    'attendees' => [['email' => 'a@ex.com', 'name' => 'A']],
+]);
+check('BEGIN/END VCALENDAR appariés (1)', substr_count($ics, 'BEGIN:VCALENDAR') === 1 && substr_count($ics, 'END:VCALENDAR') === 1);
+check('BEGIN/END VEVENT appariés (1)', substr_count($ics, 'BEGIN:VEVENT') === 1 && substr_count($ics, 'END:VEVENT') === 1);
+check('VERSION:2.0 présent', strpos($ics, 'VERSION:2.0') !== false);
+check('DTSTAMP présent', strpos($ics, 'DTSTAMP:') !== false);
+check('DTSTART en UTC (Z)', strpos($ics, 'DTSTART:20260915T103000Z') !== false);
+check('lignes en CRLF', strpos($ics, "\r\n") !== false);
 
 /* ================= Nettoyage ================= */
 array_map('unlink', glob($tmp . '/maillog/*') ?: []);

@@ -52,13 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $slots = lunch_slots((int) $lunch['id']);
+$defaultDate = date('Y-m-d', strtotime('+7 days'));
 
 page_header(__('resp.title'));
-echo '<h1>' . h($lunch['title']) . ' ' . status_badge($lunch['status']) . '</h1>';
+echo '<h1>' . h($lunch['title']) . '</h1>';
+echo '<p class="sub">' . status_badge($lunch['status']);
 if ($lunch['location']) {
-    echo '<p class="muted">' . h($lunch['location']) . '</p>';
+    echo ' &nbsp;·&nbsp; ' . h($lunch['location']);
 }
-echo '<p>' . h(__('resp.hello', ['name' => $participant['name']])) . '</p>';
+echo '</p>';
+echo '<p class="muted" style="margin-bottom:4px">' . h(__('resp.hello', ['name' => $participant['name']])) . '</p>';
 
 if ($lunch['status'] === 'annule') {
     echo '<div class="card"><p>' . h(__('resp.canceled_body')) . '</p></div>';
@@ -68,10 +71,11 @@ if ($lunch['status'] === 'annule') {
 
 if ($lunch['status'] === 'confirme') {
     $cs = get_slot((int) $lunch['confirmed_slot_id']);
-    echo '<div class="card"><p>' . h(__('resp.confirmed_intro')) . '</p>';
-    echo '<p style="font-size:16px;"><strong>' . h(fmt_slot($cs['start_utc'], (int) $cs['duration_min'])) . '</strong></p>';
+    echo '<div class="card">';
+    echo '<p style="margin-top:0"><span class="badge badge-ok">✓ ' . h(__('status.confirme')) . '</span></p>';
+    echo '<p class="st" style="font-size:19px">' . h(fmt_slot($cs['start_utc'], (int) $cs['duration_min'])) . '</p>';
     echo '<p class="muted">' . h(__('resp.confirmed_email_note')) . '</p>';
-    echo '<form method="post" onsubmit="return confirm(' . h(json_encode(__('resp.withdraw_confirm_js'))) . ');">';
+    echo '<form method="post" onsubmit="return confirm(' . h(json_encode(__('resp.withdraw_confirm_js'))) . ');" style="margin-top:8px">';
     echo csrf_field() . '<input type="hidden" name="action" value="withdraw">';
     echo '<button type="submit" class="btn-danger btn-small">' . h(__('resp.withdraw_btn')) . '</button>';
     echo '</form></div>';
@@ -79,34 +83,39 @@ if ($lunch['status'] === 'confirme') {
     exit;
 }
 
-echo '<form method="post" class="card"><input type="hidden" name="action" value="respond">' . csrf_field();
-echo '<h2>' . h(__('resp.your_avail_h2')) . '</h2>';
+// État en attente : disponibilités (segmented control iOS).
+echo '<form method="post"><input type="hidden" name="action" value="respond">' . csrf_field();
+echo '<h2>' . h(__('resp.your_avail_h2')) . '</h2><div class="card">';
 if (!$slots) {
     echo '<p class="muted">' . h(__('resp.no_slots')) . '</p>';
 }
 foreach ($slots as $s) {
-    $cur = get_response((int) $participant['id'], (int) $s['id']);
-    echo '<div class="slot-line"><div style="flex:1;min-width:200px;"><strong>'
-        . h(fmt_slot($s['start_utc'], (int) $s['duration_min'])) . '</strong>';
+    $sid = (int) $s['id'];
+    $cur = get_response((int) $participant['id'], $sid);
+    echo '<div class="slot-line"><span class="st">' . h(fmt_slot($s['start_utc'], (int) $s['duration_min']));
     if ($s['proposed_by']) {
         echo ' <span class="muted">' . h(__('resp.proposed_tag')) . '</span>';
     }
-    echo '</div><label class="inline"><input type="radio" style="width:auto;display:inline;" name="slot_' . $s['id']
-        . '" value="yes"' . ($cur === 1 ? ' checked' : '') . '> ' . h(__('resp.available')) . '</label> ';
-    echo '<label class="inline"><input type="radio" style="width:auto;display:inline;" name="slot_' . $s['id']
-        . '" value="no"' . ($cur === 0 ? ' checked' : '') . '> ' . h(__('resp.unavailable')) . '</label></div>';
+    echo '</span>';
+    echo '<div class="seg">'
+        . '<span class="seg-item seg-yes"><input type="radio" id="s' . $sid . 'y" name="slot_' . $sid . '" value="yes"' . ($cur === 1 ? ' checked' : '') . '><label for="s' . $sid . 'y">' . h(__('resp.available')) . '</label></span>'
+        . '<span class="seg-item seg-no"><input type="radio" id="s' . $sid . 'n" name="slot_' . $sid . '" value="no"' . ($cur === 0 ? ' checked' : '') . '><label for="s' . $sid . 'n">' . h(__('resp.unavailable')) . '</label></span>'
+        . '</div></div>';
 }
+echo '</div>';
 if ($slots) {
-    echo '<p style="margin-top:14px;"><button type="submit">' . h(__('resp.save_btn')) . '</button></p>';
+    echo '<button type="submit" class="btn-block">' . h(__('resp.save_btn')) . '</button>';
 }
 echo '</form>';
 
-echo '<form method="post" class="card"><input type="hidden" name="action" value="propose">' . csrf_field();
+// Proposer un créneau (défauts J+7 / 12h30).
 echo '<h2>' . h(__('resp.propose_h2')) . '</h2>';
-echo '<div class="row"><div><label>' . h(__('resp.date')) . '</label><input type="date" name="pdate"></div>'
-    . '<div><label>' . h(__('resp.time')) . '</label><input type="time" name="ptime"></div>'
-    . '<div><label>' . h(__('resp.duration')) . '</label><input type="number" name="pduration" value="90" min="15" step="15"></div></div>';
-echo '<p style="margin-top:12px;"><button type="submit" class="btn-sec">' . h(__('resp.propose_btn')) . '</button></p>';
+echo '<form method="post" class="card"><input type="hidden" name="action" value="propose">' . csrf_field();
+echo '<div class="dyn-grid">'
+    . '<input class="fdate" type="date" name="pdate" value="' . h($defaultDate) . '">'
+    . '<input type="time" name="ptime" value="12:30">'
+    . '<input type="number" name="pduration" value="90" min="15" step="15"></div>';
+echo '<p style="margin-top:12px;margin-bottom:0"><button type="submit" class="btn-sec btn-small">' . h(__('resp.propose_btn')) . '</button></p>';
 echo '</form>';
 
 page_footer();

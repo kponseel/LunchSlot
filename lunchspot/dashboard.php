@@ -101,13 +101,13 @@ $matrix = response_matrix((int) $lunch['id']);
 $n = count($participants);
 
 page_header(__('dash.title'), $org);
-echo '<h1>' . h($lunch['title']) . ' ' . status_badge($lunch['status']) . '</h1>';
-$meta = [];
+echo '<h1>' . h($lunch['title']) . '</h1>';
+$meta = [status_badge($lunch['status'])];
 if ($lunch['location']) {
     $meta[] = h($lunch['location']);
 }
 $meta[] = h(__('dash.deadline')) . ' : ' . ($lunch['deadline'] ? h(fmt_datetime($lunch['deadline'])) : h(__('dash.no_deadline')));
-echo '<p class="muted">' . implode(' · ', $meta) . '</p>';
+echo '<p class="sub">' . implode(' &nbsp;·&nbsp; ', $meta) . '</p>';
 
 if ($lunch['status'] === 'confirme' && $lunch['confirmed_slot_id']) {
     $cs = get_slot((int) $lunch['confirmed_slot_id']);
@@ -119,7 +119,7 @@ if ($lunch['status'] === 'annule') {
 
 /* ---- Matrice créneaux × participants ---- */
 echo '<h2>' . h(__('dash.matrix_h2')) . '</h2>';
-echo '<div style="overflow-x:auto;"><table><thead><tr><th>' . h(__('dash.slot')) . '</th>';
+echo '<div class="matrix-wrap"><table><thead><tr><th>' . h(__('dash.slot')) . '</th>';
 foreach ($participants as $p) {
     echo '<th>' . h($p['name']) . ((int) $p['is_organizer'] === 1 ? ' *' : '') . '</th>';
 }
@@ -127,7 +127,7 @@ echo '<th>' . h(__('dash.summary')) . '</th><th>' . h(__('dash.action')) . '</th
 
 foreach ($slots as $s) {
     $sid = (int) $s['id'];
-    echo '<tr><td><strong>' . h(fmt_slot($s['start_utc'], (int) $s['duration_min'])) . '</strong>';
+    echo '<tr><td class="slotcell">' . h(fmt_slot($s['start_utc'], (int) $s['duration_min']));
     if ($s['proposed_by']) {
         echo ' <span class="muted">' . h(__('resp.proposed_tag')) . '</span>';
     }
@@ -137,24 +137,22 @@ foreach ($slots as $s) {
     foreach ($participants as $p) {
         $v = $matrix[(int) $p['id']][$sid] ?? null;
         if ($v === 1) {
-            echo '<td class="yes">✓</td>';
+            echo '<td><span class="cell yes">✓</span></td>';
             $avail++;
         } elseif ($v === 0) {
-            echo '<td class="no">✗</td>';
+            echo '<td><span class="cell no">✗</span></td>';
             $refus++;
         } else {
-            echo '<td class="na">—</td>';
+            echo '<td><span class="cell na">—</span></td>';
         }
     }
-    // Bilan.
     if ((int) $lunch['confirmed_slot_id'] === $sid) {
         echo '<td>' . status_badge('confirme') . '</td>';
     } elseif ($refus > 0) {
-        echo '<td class="no">' . h(__('dash.impossible')) . '</td>';
+        echo '<td><span class="badge badge-cancel">' . h(__('dash.impossible')) . '</span></td>';
     } else {
-        echo '<td>' . h(__('dash.possible', ['x' => $avail, 'n' => $n])) . '</td>';
+        echo '<td class="muted">' . h(__('dash.possible', ['x' => $avail, 'n' => $n])) . '</td>';
     }
-    // Action : confirmation manuelle si en attente et aucun refus.
     echo '<td>';
     if ($lunch['status'] === 'en_attente' && $refus === 0 && $n > 0) {
         echo '<form method="post" style="margin:0;">' . csrf_field()
@@ -166,8 +164,7 @@ foreach ($slots as $s) {
 echo '</tbody></table></div>';
 
 /* ---- Qui a répondu ---- */
-echo '<h2>' . h(__('dash.responded_h2')) . '</h2>';
-echo '<table><thead><tr><th>' . h(__('my.col_participants')) . '</th><th></th><th>' . h(__('dash.copy_link')) . '</th><th></th></tr></thead><tbody>';
+echo '<h2>' . h(__('dash.responded_h2')) . '</h2><div class="list">';
 foreach ($participants as $p) {
     $answered = 0;
     foreach ($slots as $s) {
@@ -178,39 +175,42 @@ foreach ($participants as $p) {
     $state = $answered === 0 ? __('dash.pending') : ($answered >= count($slots) && count($slots) > 0 ? __('dash.complete') : __('dash.partial'));
     $badgeCls = $answered === 0 ? 'badge-cancel' : ($answered >= count($slots) ? 'badge-ok' : 'badge-wait');
     $purl = participant_url($p);
-    echo '<tr><td><strong>' . h($p['name']) . '</strong>' . ((int) $p['is_organizer'] === 1 ? ' *' : '')
-        . '<br><span class="muted">' . h($p['email']) . '</span>';
+    echo '<div class="item"><div class="grow">';
+    echo '<div class="t">' . h($p['name']) . ((int) $p['is_organizer'] === 1 ? ' *' : '')
+        . ' <span class="badge ' . $badgeCls . '">' . h($state) . '</span></div>';
+    echo '<div class="d">' . h($p['email']);
     if (!empty($p['last_reminded_at'])) {
-        echo '<br><span class="muted">' . h(__('dash.last_reminded', ['when' => fmt_datetime($p['last_reminded_at'])])) . '</span>';
+        echo ' · ' . h(__('dash.last_reminded', ['when' => fmt_datetime($p['last_reminded_at'])]));
     }
-    echo '</td>';
-    echo '<td><span class="badge ' . $badgeCls . '">' . h($state) . '</span></td>';
-    echo '<td><span class="copy">' . h($purl) . '</span> '
-        . '<button type="button" class="btn-small btn-sec ls-copy" data-copy="' . h($purl) . '">' . h(__('dash.copy_btn')) . '</button></td>';
-    echo '<td>';
+    echo '</div>';
     if ((int) $p['is_organizer'] === 0) {
-        echo '<form method="post" class="inline" style="margin:0 4px 4px 0;">' . csrf_field()
+        echo '<div class="rowbtns" style="margin-top:10px;flex-wrap:wrap">';
+        echo '<button type="button" class="btn-small btn-sec ls-copy" data-copy="' . h($purl) . '">' . h(__('dash.copy_btn')) . '</button>';
+        echo '<form method="post" style="margin:0">' . csrf_field()
             . '<input type="hidden" name="do" value="resend"><input type="hidden" name="pid" value="' . $p['id'] . '">'
             . '<button class="btn-small btn-sec" type="submit">' . h(__('dash.resend')) . '</button></form>';
         if ($lunch['status'] === 'en_attente') {
-            echo '<form method="post" class="inline" style="margin:0;">' . csrf_field()
+            echo '<form method="post" style="margin:0">' . csrf_field()
                 . '<input type="hidden" name="do" value="remind"><input type="hidden" name="pid" value="' . $p['id'] . '">'
                 . '<button class="btn-small btn-sec" type="submit">' . h(__('dash.remind')) . '</button></form>';
         }
+        echo '</div>';
     }
-    echo '</td></tr>';
+    echo '</div></div>';
 }
-echo '</tbody></table>';
-echo '<p class="muted">* ' . h(__('dash.you_participate')) . '</p>';
+echo '</div>';
+echo '<p class="muted" style="padding:0 2px">* ' . h(__('dash.you_participate')) . '</p>';
 
 /* ---- Ajouter un créneau (seulement en attente) ---- */
 if ($lunch['status'] === 'en_attente') {
+    $addDate = date('Y-m-d', strtotime('+7 days'));
     echo '<h2>' . h(__('dash.addslot_h2')) . '</h2>';
     echo '<form method="post" class="card">' . csrf_field() . '<input type="hidden" name="do" value="addslot">';
-    echo '<div class="row"><div><label>' . h(__('resp.date')) . '</label><input type="date" name="date"></div>'
-        . '<div><label>' . h(__('resp.time')) . '</label><input type="time" name="time"></div>'
-        . '<div><label>' . h(__('resp.duration')) . '</label><input type="number" name="duration" value="90" min="15" step="15"></div></div>';
-    echo '<p style="margin-top:12px;"><button type="submit">' . h(__('dash.addslot_btn')) . '</button></p></form>';
+    echo '<div class="dyn-grid">'
+        . '<input class="fdate" type="date" name="date" value="' . h($addDate) . '">'
+        . '<input type="time" name="time" value="12:30">'
+        . '<input type="number" name="duration" value="90" min="15" step="15"></div>';
+    echo '<p style="margin-top:12px;margin-bottom:0"><button type="submit" class="btn-sec btn-small">' . h(__('dash.addslot_btn')) . '</button></p></form>';
 }
 
 /* ---- Annuler le déjeuner (tant qu'il n'est pas déjà annulé) ---- */

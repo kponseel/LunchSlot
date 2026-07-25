@@ -209,6 +209,20 @@ function request_is_https(): bool
     return str_starts_with((string) config('app_url', ''), 'https://');
 }
 
+/**
+ * Mémorise (et retourne) la dernière erreur d'envoi d'email.
+ * Sert au diagnostic : sans cela, un échec SMTP est invisible côté interface.
+ */
+function mail_error(?string $set = null): string
+{
+    static $err = '';
+    if ($set !== null) {
+        $err = $set;
+        error_log('LunchSpot mail: ' . $set);
+    }
+    return $err;
+}
+
 /** Nettoie une saisie sur une seule ligne : trim + suppression des CR/LF et caractères de contrôle. */
 function clean_line(string $s): string
 {

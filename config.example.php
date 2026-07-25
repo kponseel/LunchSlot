@@ -14,6 +14,11 @@ return [
     // les erreurs vont dans les logs, pas dans la page. true seulement pour déboguer.
     'debug' => false,
 
+    // Clé secrète activant la page de diagnostic /diag.php (test d'envoi email,
+    // état de l'anti-abus, permissions). Laisser vide en temps normal : sans clé,
+    // /diag.php répond 404. Ex. : 'diag_key' => 'k7f2-secret-a-changer',
+    'diag_key' => '',
+
     // URL de base publique, SANS slash final.
     // Sert à construire les liens absolus dans les emails.
     // Ex. production : 'https://exemple.com/lunchspot'

@@ -26,12 +26,21 @@ function issue_magic_link(string $rawEmail): void
     $ttl = (int) config('magic_link_ttl_minutes', 15) * 60;
     $ins = db()->prepare('INSERT INTO magic_links (email, token_hash, expires_at, created_ip, created_at) VALUES (?,?,?,?,?)');
     $ins->execute([$email, token_hash($token), utc_plus($ttl), client_ip(), now_utc()]);
+    $linkId = (int) db()->lastInsertId();
 
     $ipIns = db()->prepare('INSERT INTO magic_ip_hits (ip, created_at) VALUES (?,?)');
     $ipIns->execute([client_ip(), now_utc()]);
+    $hitId = (int) db()->lastInsertId();
 
     $link = rtrim(config('app_url'), '/') . '/verify.php?token=' . $token;
-    send_magic_link($email, $link);
+
+    // Si l'envoi échoue (SMTP mal configuré, serveur injoignable…), on annule la
+    // trace : un échec ne doit pas consommer le quota anti-abus, sinon on se
+    // retrouve bloqué sans avoir jamais reçu d'email.
+    if (!send_magic_link($email, $link)) {
+        db()->prepare('DELETE FROM magic_links WHERE id = ?')->execute([$linkId]);
+        db()->prepare('DELETE FROM magic_ip_hits WHERE id = ?')->execute([$hitId]);
+    }
 }
 
 /** Vrai si le quota d'envoi (par email OU par IP) est dépassé. */

@@ -67,7 +67,11 @@ function send_mail(string $to, string $subject, string $html, string $text, arra
         return smtp_send($fromEmail, $to, $encodedSubject, $headers, $body, $opts);
     }
     // Transport 'mail' par défaut.
-    return mail($to, $encodedSubject, $body, implode("\r\n", $headers));
+    $ok = mail($to, $encodedSubject, $body, implode("\r\n", $headers));
+    if (!$ok) {
+        mail_error('mail() a échoué (transport « mail »). Essayez le transport SMTP.');
+    }
+    return $ok;
 }
 
 /** Encodage MIME d'un en-tête (sujet). */

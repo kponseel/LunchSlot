@@ -16,7 +16,7 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
     $pass = config('smtp_pass');
 
     if ($host === '') {
-        error_log('LunchSpot SMTP: smtp_host non configuré');
+        mail_error('SMTP : smtp_host non configuré dans config.php');
         return false;
     }
 
@@ -24,7 +24,7 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
     $ctx = stream_context_create();
     $fp = @stream_socket_client($remote, $errno, $errstr, 20, STREAM_CLIENT_CONNECT, $ctx);
     if (!$fp) {
-        error_log("LunchSpot SMTP: connexion échouée $errstr ($errno)");
+        mail_error("SMTP : connexion à $remote impossible — $errstr ($errno)");
         return false;
     }
 
@@ -50,7 +50,7 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
     if ($security === 'tls') {
         $cmd('STARTTLS');
         if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-            error_log('LunchSpot SMTP: STARTTLS échoué');
+            mail_error('SMTP : négociation STARTTLS échouée (essayez port 465 + security=ssl)');
             fclose($fp);
             return false;
         }
@@ -62,7 +62,8 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
         $cmd(base64_encode($user));
         $resp = $cmd(base64_encode($pass));
         if (strncmp($resp, '235', 3) !== 0) {
-            error_log('LunchSpot SMTP: authentification refusée');
+            mail_error('SMTP : authentification refusée pour ' . $user . ' — ' . trim($resp)
+                . ' (vérifiez smtp_user / smtp_pass)');
             fclose($fp);
             return false;
         }
@@ -71,7 +72,7 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
     $cmd('MAIL FROM:<' . $from . '>');
     $rcpt = $cmd('RCPT TO:<' . $to . '>');
     if (strncmp($rcpt, '25', 2) !== 0) {
-        error_log('LunchSpot SMTP: RCPT refusé: ' . trim($rcpt));
+        mail_error('SMTP : destinataire refusé (' . $to . ') — ' . trim($rcpt));
         fclose($fp);
         return false;
     }
@@ -85,5 +86,9 @@ function smtp_send(string $from, string $to, string $subject, array $headers, st
     $cmd('QUIT');
     fclose($fp);
 
-    return strncmp($resp, '250', 3) === 0;
+    $ok = strncmp($resp, '250', 3) === 0;
+    if (!$ok) {
+        mail_error('SMTP : envoi refusé par le serveur — ' . trim($resp));
+    }
+    return $ok;
 }

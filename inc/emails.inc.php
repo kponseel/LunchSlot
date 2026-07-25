@@ -354,8 +354,8 @@ function send_deadline_report(array $lunch, array $missing): void
     });
 }
 
-/* 2. Magic link (langue = navigateur du demandeur). */
-function send_magic_link(string $email, string $link): void
+/* 2. Magic link (langue = navigateur du demandeur). Retourne le succès d'envoi. */
+function send_magic_link(string $email, string $link): bool
 {
     $app = config('app_name', 'LunchSpot');
     $min = (int) config('magic_link_ttl_minutes', 15);
@@ -366,5 +366,5 @@ function send_magic_link(string $email, string $link): void
         . '<p style="font-size:13px;color:#666;">' . h(__('email.magic.note', ['min' => $min])) . '</p>'
     );
     $text = __('email.magic.body', ['app' => $app]) . "\n$link\n\n" . __('email.magic.note', ['min' => $min]);
-    send_mail($email, __('email.magic.subject', ['app' => $app]), $html, $text);
+    return send_mail($email, __('email.magic.subject', ['app' => $app]), $html, $text);
 }

@@ -138,6 +138,7 @@ function db_migrate(PDO $pdo): void
 
     // Migrations additives.
     db_add_column_if_missing($pdo, 'lunches', 'locale', "TEXT NOT NULL DEFAULT 'fr'");
+    db_add_column_if_missing($pdo, 'lunches', 'organizer_name', 'TEXT');
 }
 
 /**

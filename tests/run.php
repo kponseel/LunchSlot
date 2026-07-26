@@ -243,6 +243,56 @@ cancel_lunch(get_lunch((int) $l['id']));
 check('statut annulé', get_lunch((int) $l['id'])['status'] === 'annule');
 check('CANCEL calendrier envoyé', grepc('METHOD:CANCEL') > $before);
 
+/* ================= Invitation portée par l'organisateur ================= */
+echo "\n== I. Invitation finale : organisateur + tous les convives ==\n";
+reset_all();
+$r = create_lunch(['title' => 'Invit', 'organizer_email' => 'marie@acme.fr', 'organizer_name' => 'Marie Dupont',
+    'organizer_participates' => false, 'deadline_local' => null, 'locale' => 'fr',
+    'participants' => [['name' => 'Alice', 'email' => 'alice@ex.com'], ['name' => 'Bob', 'email' => 'bob@ex.com']],
+    'slots' => [['date' => '2026-09-15', 'time' => '12:30', 'duration' => 90]]]);
+$l = $r['lunch'];
+check('nom de l\'organisateur mémorisé', ($l['organizer_name'] ?? '') === 'Marie Dupont');
+check('pré-remplissage au prochain déjeuner', last_organizer_name('marie@acme.fr') === 'Marie Dupont');
+foreach (mfiles() as $f) { unlink($f); }
+$slotI = lunch_slots((int) $l['id'])[0];
+foreach (lunch_participants((int) $l['id']) as $p) {
+    process_response($p, [(int) $slotI['id'] => true]);
+}
+check('déjeuner confirmé', get_lunch((int) $l['id'])['status'] === 'confirme');
+
+$orgMail = null; $partMail = null;
+foreach (mfiles() as $f) {
+    $raw = file_get_contents($f);
+    $content = quoted_printable_decode($raw) . dec($f);
+    if (strpos($content, 'CONFIRMED') === false || !preg_match('/^To: (.*)$/m', $raw, $to)) {
+        continue;
+    }
+    $dest = trim($to[1]);
+    if ($dest === 'marie@acme.fr') { $orgMail = $content; }
+    if ($dest === 'alice@ex.com')  { $partMail = $content; }
+}
+/** Extrait les URL Google Calendar d'un email (évite les faux positifs des blocs base64). */
+$gcalLinks = function (?string $mail): array {
+    if ($mail === null) {
+        return [];
+    }
+    preg_match_all('#https://calendar\.google\.com/calendar/render\?[^"\s<>]+#', $mail, $m);
+    return $m[0];
+};
+$orgLinks = $gcalLinks($orgMail);
+$partLinks = $gcalLinks($partMail);
+$orgLinkWithGuests = implode(' ', array_filter($orgLinks, fn($u) => strpos($u, 'add=') !== false));
+
+check('organisateur : lien Google avec invités pré-remplis (add=)', $orgLinkWithGuests !== '');
+check('organisateur : les 2 convives dans le lien', $orgLinkWithGuests !== ''
+    && strpos($orgLinkWithGuests, 'alice%40ex.com') !== false
+    && strpos($orgLinkWithGuests, 'bob%40ex.com') !== false);
+check('participant : pas de add= (agenda personnel)', $partLinks !== []
+    && implode(' ', array_filter($partLinks, fn($u) => strpos($u, 'add=') !== false)) === '');
+check('participant : expéditeur au nom de l\'organisateur', $partMail !== null && strpos($partMail, 'Marie Dupont (via') !== false);
+check('.ics : ORGANIZER = nom réel', $partMail !== null && strpos($partMail, 'CN=Marie Dupont') !== false);
+check('.ics : tous les convives en ATTENDEE', $partMail !== null && substr_count($partMail, 'ATTENDEE') >= 2);
+
 /* ================= .ics bien formé ================= */
 echo "\n== H. Structure iCalendar (RFC 5545) ==\n";
 // Validation directe de la sortie du générateur (déterministe, sans décodage d'email).

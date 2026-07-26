@@ -120,12 +120,13 @@ function create_lunch(array $data): array
         $adminToken = random_token(24);
         $deadlineUtc = !empty($data['deadline_local']) ? local_to_utc($data['deadline_local']) : null;
 
-        $st = $pdo->prepare('INSERT INTO lunches (title, location, organizer_email, admin_token, status, timezone, deadline, locale, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?)');
+        $st = $pdo->prepare('INSERT INTO lunches (title, location, organizer_email, organizer_name, admin_token, status, timezone, deadline, locale, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?)');
         $st->execute([
             $data['title'],
             $data['location'] ?? null,
             normalize_email($data['organizer_email']),
+            ($data['organizer_name'] ?? '') !== '' ? $data['organizer_name'] : null,
             $adminToken,
             'en_attente',
             config('timezone', 'Europe/Paris'),
@@ -201,6 +202,24 @@ function lunches_for_organizer(string $email): array
     $st = db()->prepare('SELECT * FROM lunches WHERE organizer_email = ? ORDER BY created_at DESC');
     $st->execute([normalize_email($email)]);
     return $st->fetchAll();
+}
+
+/** Dernier nom utilisé par cet organisateur (pré-remplissage du formulaire). */
+function last_organizer_name(string $email): string
+{
+    $st = db()->prepare("SELECT organizer_name FROM lunches
+        WHERE organizer_email = ? AND organizer_name IS NOT NULL AND organizer_name <> ''
+        ORDER BY id DESC LIMIT 1");
+    $st->execute([normalize_email($email)]);
+    $v = $st->fetchColumn();
+    return $v === false ? '' : (string) $v;
+}
+
+/** Nom affiché de l'organisateur d'un déjeuner (repli sur un libellé neutre). */
+function organizer_display_name(array $lunch): string
+{
+    $n = trim((string) ($lunch['organizer_name'] ?? ''));
+    return $n !== '' ? $n : 'Organisateur';
 }
 
 function log_mail_event(?int $lunchId, string $kind, ?string $recipient = null): void

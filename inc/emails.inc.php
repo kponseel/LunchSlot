@@ -83,6 +83,7 @@ function send_participant_invite(array $lunch, array $participant): void
 
         send_mail($participant['email'], __('email.invite.subject', ['title' => $lunch['title']]), $html, $text, [
             'reply_to' => $lunch['organizer_email'],
+            'from_name' => sender_name($lunch),
         ]);
         log_mail_event((int) $lunch['id'], 'invite', $participant['email']);
     });
@@ -127,7 +128,7 @@ function send_placeholders(array $lunch, array $participant, array $available, a
                 'summary' => $prefix . ' ' . $lunch['title'],
                 'description' => $prefix . ' ' . config('app_name', 'LunchSpot'),
                 'location' => $lunch['location'] ?? '',
-                'organizer_email' => $lunch['organizer_email'], 'organizer_name' => 'Organisateur',
+                'organizer_email' => $lunch['organizer_email'], 'organizer_name' => organizer_display_name($lunch),
                 'attendees' => [['email' => $participant['email'], 'name' => $participant['name']]],
             ]);
             $attachments[] = ['filename' => 'provisoire-' . $slot['id'] . '.ics', 'content' => $ics,
@@ -147,7 +148,7 @@ function send_placeholders(array $lunch, array $participant, array $available, a
                 'method' => 'CANCEL', 'uid' => $uid, 'sequence' => $seq, 'status' => 'CANCELLED',
                 'start_utc' => $slot['start_utc'], 'duration_min' => (int) $slot['duration_min'],
                 'summary' => $prefix . ' ' . $lunch['title'], 'location' => $lunch['location'] ?? '',
-                'organizer_email' => $lunch['organizer_email'], 'organizer_name' => 'Organisateur',
+                'organizer_email' => $lunch['organizer_email'], 'organizer_name' => organizer_display_name($lunch),
                 'attendees' => [['email' => $participant['email'], 'name' => $participant['name']]],
             ]);
             $attachments[] = ['filename' => 'annulation-' . $slot['id'] . '.ics', 'content' => $ics,
@@ -174,6 +175,7 @@ function send_placeholders(array $lunch, array $participant, array $available, a
 
         send_mail($participant['email'], __('email.ph.subject', ['title' => $lunch['title']]), $html, $text, [
             'reply_to' => $lunch['organizer_email'], 'attachments' => $attachments,
+            'from_name' => sender_name($lunch),
         ]);
     });
 }
@@ -198,7 +200,7 @@ function send_new_slot_notice(array $lunch, array $slot, array $recipients, stri
                 . __('email.newslot.body', ['who' => $proposerName]) . "\n"
                 . fmt_slot($slot['start_utc'], (int) $slot['duration_min']) . "\n\n"
                 . __('email.newslot.ask') . " $url";
-            $opts = $isOrg ? [] : ['reply_to' => $lunch['organizer_email']];
+            $opts = $isOrg ? [] : ['reply_to' => $lunch['organizer_email'], 'from_name' => sender_name($lunch)];
             send_mail($r['email'], __('email.newslot.subject', ['title' => $lunch['title']]), $html, $text, $opts);
         }
     });
@@ -215,7 +217,8 @@ function send_confirmation(array $lunch, array $slot, array $recipient, array $a
             'start_utc' => $slot['start_utc'], 'duration_min' => (int) $slot['duration_min'],
             'summary' => $lunch['title'], 'description' => config('app_name', 'LunchSpot'),
             'location' => $lunch['location'] ?? '',
-            'organizer_email' => $lunch['organizer_email'], 'organizer_name' => 'Organisateur',
+            'organizer_email' => $lunch['organizer_email'],
+            'organizer_name' => organizer_display_name($lunch),
             'attendees' => $allAttendees,
         ]);
         $attachments = [['filename' => 'invitation.ics', 'content' => $ics,
@@ -227,36 +230,87 @@ function send_confirmation(array $lunch, array $slot, array $recipient, array $a
             $cleanupText .= '- ' . $ph['label'] . "\n";
         }
 
-        $glink = google_calendar_link($slot['start_utc'], (int) $slot['duration_min'], $lunch['title'], '', $lunch['location'] ?? '');
+        // Liste des convives : l'organisateur reçoit un lien Google qui crée
+        // l'événement AVEC tout le monde déjà invité ; chaque participant reçoit
+        // un lien pour son propre agenda (sans réinviter les autres).
+        $guestEmails = array_column($allAttendees, 'email');
+        $guestEmails = array_values(array_diff($guestEmails, [$lunch['organizer_email']]));
+        $glink = google_calendar_link(
+            $slot['start_utc'], (int) $slot['duration_min'], $lunch['title'], '',
+            $lunch['location'] ?? '',
+            $isOrganizerOnly ? $guestEmails : []
+        );
         $loc = $lunch['location'] ? '<p>' . h(__('email.invite.location', ['loc' => $lunch['location']])) . '</p>' : '';
         $cleanupHtml = $placeholderCancels
             ? '<p style="font-size:13px;color:#666;"><strong>' . h(__('email.confirm.cleanup')) . '</strong></p><ul>'
                 . implode('', array_map(fn($ph) => '<li>' . h($ph['label']) . '</li>', $placeholderCancels)) . '</ul>'
             : '';
 
-        $html = email_html(
-            h(__('email.confirm.heading', ['title' => $lunch['title']])),
-            '<p>' . h(__('email.hello', ['name' => $recipient['name'] ?? ''])) . '</p>'
-            . '<p>' . h(__('email.confirm.body')) . '</p>'
-            . '<p style="font-size:16px;"><strong>' . h(fmt_slot($slot['start_utc'], (int) $slot['duration_min'])) . '</strong></p>'
-            . $loc
-            . '<p>' . h(__('email.confirm.ics_note')) . '</p>'
-            . email_button(__('email.add_gcal'), $glink)
-            . $cleanupHtml
-        );
-        $text = __('email.hello', ['name' => $recipient['name'] ?? '']) . "\n\n"
-            . __('email.confirm.body') . "\n"
-            . fmt_slot($slot['start_utc'], (int) $slot['duration_min']) . "\n"
-            . ($lunch['location'] ? __('email.invite.location', ['loc' => $lunch['location']]) . "\n" : '')
-            . "\n" . __('email.confirm.ics_note') . "\nGoogle : $glink\n"
-            . ($cleanupText ? "\n" . __('email.confirm.cleanup') . "\n$cleanupText" : '');
+        // Récapitulatif des convives (utile surtout à l'organisateur).
+        $guestList = '';
+        $guestText = '';
+        foreach ($allAttendees as $a) {
+            $guestList .= '<li>' . h($a['name'] ?? $a['email']) . ' &lt;' . h($a['email']) . '&gt;</li>';
+            $guestText .= '- ' . ($a['name'] ?? $a['email']) . ' <' . $a['email'] . ">\n";
+        }
 
-        $opts = ['attachments' => $attachments];
-        if (!$isOrganizerOnly) {
-            $opts['reply_to'] = $lunch['organizer_email'];
+        if ($isOrganizerOnly) {
+            // Email « pilote » : l'organisateur envoie l'invitation depuis son agenda.
+            $html = email_html(
+                h(__('email.confirm.heading_org', ['title' => $lunch['title']])),
+                '<p>' . h(__('email.confirm.body')) . '</p>'
+                . '<p style="font-size:16px;"><strong>' . h(fmt_slot($slot['start_utc'], (int) $slot['duration_min'])) . '</strong></p>'
+                . $loc
+                . '<p>' . h(__('email.confirm.org_intro')) . '</p>'
+                . '<ul>' . $guestList . '</ul>'
+                . email_button(__('email.confirm.org_cta'), $glink)
+                . '<p style="font-size:13px;color:#666;">' . h(__('email.confirm.org_note')) . '</p>'
+                . $cleanupHtml
+            );
+            $text = __('email.confirm.body') . "\n"
+                . fmt_slot($slot['start_utc'], (int) $slot['duration_min']) . "\n"
+                . ($lunch['location'] ? __('email.invite.location', ['loc' => $lunch['location']]) . "\n" : '')
+                . "\n" . __('email.confirm.org_intro') . "\n" . $guestText
+                . "\n" . __('email.confirm.org_cta') . " : $glink\n"
+                . "\n" . __('email.confirm.org_note') . "\n"
+                . ($cleanupText ? "\n" . __('email.confirm.cleanup') . "\n$cleanupText" : '');
+            $opts = ['attachments' => $attachments];
+        } else {
+            $html = email_html(
+                h(__('email.confirm.heading', ['title' => $lunch['title']])),
+                '<p>' . h(__('email.hello', ['name' => $recipient['name'] ?? ''])) . '</p>'
+                . '<p>' . h(__('email.confirm.body')) . '</p>'
+                . '<p style="font-size:16px;"><strong>' . h(fmt_slot($slot['start_utc'], (int) $slot['duration_min'])) . '</strong></p>'
+                . $loc
+                . '<p>' . h(__('email.confirm.with_guests')) . '</p>'
+                . '<ul>' . $guestList . '</ul>'
+                . '<p>' . h(__('email.confirm.ics_note')) . '</p>'
+                . email_button(__('email.add_gcal'), $glink)
+                . $cleanupHtml
+            );
+            $text = __('email.hello', ['name' => $recipient['name'] ?? '']) . "\n\n"
+                . __('email.confirm.body') . "\n"
+                . fmt_slot($slot['start_utc'], (int) $slot['duration_min']) . "\n"
+                . ($lunch['location'] ? __('email.invite.location', ['loc' => $lunch['location']]) . "\n" : '')
+                . "\n" . __('email.confirm.with_guests') . "\n" . $guestText
+                . "\n" . __('email.confirm.ics_note') . "\nGoogle : $glink\n"
+                . ($cleanupText ? "\n" . __('email.confirm.cleanup') . "\n$cleanupText" : '');
+            $opts = [
+                'attachments' => $attachments,
+                'reply_to' => $lunch['organizer_email'],
+                'from_name' => sender_name($lunch),
+            ];
         }
         send_mail($recipient['email'], __('email.confirm.subject', ['title' => $lunch['title']]), $html, $text, $opts);
     });
+}
+
+/** Nom d'expéditeur pour les emails aux participants : « Marie (via LunchSpot) ». */
+function sender_name(array $lunch): string
+{
+    $app = (string) config('app_name', 'LunchSpot');
+    $n = trim((string) ($lunch['organizer_name'] ?? ''));
+    return $n !== '' ? $n . ' (via ' . $app . ')' : $app;
 }
 
 /* 8. Désistement / réouverture. */
@@ -280,6 +334,7 @@ function send_reopen_notice(array $lunch, array $recipient, string $whoLeft, str
         $opts = ['attachments' => $attachments];
         if (!$isOrganizerOnly) {
             $opts['reply_to'] = $lunch['organizer_email'];
+            $opts['from_name'] = sender_name($lunch);
         }
         send_mail($recipient['email'], __('email.reopen.subject', ['title' => $lunch['title']]), $html, $text, $opts);
     });
@@ -302,6 +357,7 @@ function send_cancellation(array $lunch, array $recipient, string $cancelIcs, bo
         $opts = ['attachments' => $attachments];
         if (!$isOrganizerOnly) {
             $opts['reply_to'] = $lunch['organizer_email'];
+            $opts['from_name'] = sender_name($lunch);
         }
         send_mail($recipient['email'], __('email.cancel.subject', ['title' => $lunch['title']]), $html, $text, $opts);
     });
@@ -323,6 +379,7 @@ function send_reminder(array $lunch, array $participant): void
             . __('email.reminder.body', ['title' => $lunch['title'], 'suffix' => $suffix]) . "\n$url";
         send_mail($participant['email'], __('email.reminder.subject', ['title' => $lunch['title']]), $html, $text, [
             'reply_to' => $lunch['organizer_email'],
+            'from_name' => sender_name($lunch),
         ]);
     });
 }

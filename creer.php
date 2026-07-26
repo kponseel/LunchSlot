@@ -3,7 +3,7 @@ require_once __DIR__ . '/inc/bootstrap.inc.php';
 
 $org = require_login();
 $errors = [];
-$old = ['title' => '', 'location' => '', 'organizer_name' => '', 'deadline' => ''];
+$old = ['title' => '', 'location' => '', 'organizer_name' => last_organizer_name($org['email']), 'deadline' => ''];
 
 $defaultDate = date('Y-m-d', strtotime('+7 days'));
 $defaultTime = '12:30';
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $res = create_lunch([
             'title' => $old['title'], 'location' => $old['location'] ?: null,
-            'organizer_email' => $org['email'], 'organizer_name' => $old['organizer_name'] ?: 'Organisateur',
+            'organizer_email' => $org['email'], 'organizer_name' => $old['organizer_name'],
             'organizer_participates' => $participates,
             'deadline_local' => $old['deadline'] ? str_replace('T', ' ', $old['deadline']) : null,
             'participants' => $participants, 'slots' => $slots, 'locale' => current_locale(),
@@ -100,6 +100,9 @@ foreach ($errors as $e) { echo '<div class="flash error">' . h($e) . '</div>'; }
 <form method="post" id="createForm">
   <?= csrf_field() ?>
   <div class="card">
+    <label for="organizer_name"><?= h(__('create.my_name_label')) ?></label>
+    <input type="text" id="organizer_name" name="organizer_name" value="<?= h($old['organizer_name']) ?>" placeholder="<?= h(__('create.my_name_ph')) ?>">
+    <p class="help"><?= h(__('create.my_name_help')) ?></p>
     <label for="title"><?= h(__('create.title_label')) ?></label>
     <input type="text" id="title" name="title" required value="<?= h($old['title']) ?>" placeholder="<?= h(__('create.title_ph')) ?>">
     <label for="location"><?= h(__('create.location_label')) ?></label>
@@ -147,10 +150,6 @@ foreach ($errors as $e) { echo '<div class="flash error">' . h($e) . '</div>'; }
     <div class="switch-row">
       <span class="lbl"><?= h(__('create.i_participate')) ?></span>
       <label class="switch"><input type="checkbox" name="organizer_participates" value="1" id="participate" <?= !empty($_POST['organizer_participates']) ? 'checked' : '' ?>><span class="track"></span></label>
-    </div>
-    <div id="orgNameWrap" style="<?= !empty($_POST['organizer_participates']) ? '' : 'display:none' ?>">
-      <label for="organizer_name"><?= h(__('create.my_name_label')) ?></label>
-      <input type="text" id="organizer_name" name="organizer_name" value="<?= h($old['organizer_name']) ?>" placeholder="<?= h(__('create.my_name_ph')) ?>">
     </div>
   </div>
 
@@ -208,8 +207,6 @@ foreach ($errors as $e) { echo '<div class="flash error">' . h($e) . '</div>'; }
   }
   slots.addEventListener('input',checkDup); checkDup();
 
-  var pc=document.getElementById('participate'), onw=document.getElementById('orgNameWrap');
-  if(pc) pc.addEventListener('change',function(){onw.style.display=pc.checked?'':'none';});
 })();
 </script>
 <?php

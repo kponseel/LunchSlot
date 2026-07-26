@@ -193,7 +193,7 @@ function build_placeholder_cancels(array $lunch, array $participant): array
             'summary' => '[Provisoire] ' . $lunch['title'],
             'location' => $lunch['location'] ?? '',
             'organizer_email' => $lunch['organizer_email'],
-            'organizer_name' => 'Organisateur',
+            'organizer_name' => organizer_display_name($lunch),
             'attendees' => [['email' => $participant['email'], 'name' => $participant['name']]],
         ]);
         $cancels[] = [
@@ -233,7 +233,7 @@ function withdraw_participant(array $participant): bool
         'summary' => $lunch['title'],
         'location' => $lunch['location'] ?? '',
         'organizer_email' => $lunch['organizer_email'],
-        'organizer_name' => 'Organisateur',
+        'organizer_name' => organizer_display_name($lunch),
         'attendees' => participants_as_attendees((int) $lunch['id']),
     ]);
 
@@ -275,7 +275,7 @@ function cancel_lunch(array $lunch): void
             'summary' => $lunch['title'],
             'location' => $lunch['location'] ?? '',
             'organizer_email' => $lunch['organizer_email'],
-            'organizer_name' => 'Organisateur',
+            'organizer_name' => organizer_display_name($lunch),
             'attendees' => participants_as_attendees((int) $lunch['id']),
         ]);
     }

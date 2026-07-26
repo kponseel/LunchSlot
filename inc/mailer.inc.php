@@ -17,7 +17,9 @@ require_once __DIR__ . '/smtp.inc.php';
 function send_mail(string $to, string $subject, string $html, string $text, array $opts = []): bool
 {
     $fromEmail = config('mail_from');
-    $fromName  = config('mail_from_name', 'LunchSpot');
+    // Nom d'expéditeur : on peut afficher « Marie (via LunchSpot) » pour que les
+    // participants identifient l'organisateur, sans usurper son adresse (SPF/DKIM).
+    $fromName  = $opts['from_name'] ?? config('mail_from_name', 'LunchSpot');
     $boundaryMixed = 'mix_' . bin2hex(random_bytes(12));
     $boundaryAlt   = 'alt_' . bin2hex(random_bytes(12));
 

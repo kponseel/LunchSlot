@@ -5,7 +5,12 @@
 
 declare(strict_types=1);
 
-function google_calendar_link(string $startUtc, int $durationMin, string $title, string $details = '', string $location = ''): string
+/**
+ * @param array $guests Emails à pré-inviter (paramètre `add` de Google Calendar).
+ *                      Utilisé pour l'invitation définitive : l'organisateur
+ *                      obtient un événement contenant déjà tous les participants.
+ */
+function google_calendar_link(string $startUtc, int $durationMin, string $title, string $details = '', string $location = '', array $guests = []): string
 {
     $tzUtc = new DateTimeZone('UTC');
     $start = new DateTime($startUtc, $tzUtc);
@@ -22,6 +27,10 @@ function google_calendar_link(string $startUtc, int $durationMin, string $title,
     }
     if ($location !== '') {
         $params['location'] = $location;
+    }
+    $guests = array_values(array_unique(array_filter(array_map('trim', $guests))));
+    if ($guests) {
+        $params['add'] = implode(',', $guests);
     }
 
     return 'https://calendar.google.com/calendar/render?' . http_build_query($params);

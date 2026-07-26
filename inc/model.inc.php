@@ -118,16 +118,24 @@ function create_lunch(array $data): array
     $pdo->beginTransaction();
     try {
         $adminToken = random_token(24);
-        $deadlineUtc = !empty($data['deadline_local']) ? local_to_utc($data['deadline_local']) : null;
+        $joinToken = random_token(18);
+        $minLead = max(0, (int) ($data['min_lead_days'] ?? 0));
 
-        $st = $pdo->prepare('INSERT INTO lunches (title, location, organizer_email, organizer_name, admin_token, status, timezone, deadline, locale, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)');
+        // Date limite : explicite, sinon déduite des créneaux (veille du plus tôt à 12h).
+        $deadlineUtc = !empty($data['deadline_local'])
+            ? local_to_utc($data['deadline_local'])
+            : default_deadline_from_slots($data['slots'] ?? []);
+
+        $st = $pdo->prepare('INSERT INTO lunches (title, location, organizer_email, organizer_name, admin_token, join_token, min_lead_days, status, timezone, deadline, locale, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
         $st->execute([
             $data['title'],
             $data['location'] ?? null,
             normalize_email($data['organizer_email']),
             ($data['organizer_name'] ?? '') !== '' ? $data['organizer_name'] : null,
             $adminToken,
+            $joinToken,
+            $minLead,
             'en_attente',
             config('timezone', 'Europe/Paris'),
             $deadlineUtc,
@@ -183,6 +191,131 @@ function add_slot_to_lunch(int $lunchId, string $localDate, string $localTime, i
     $ins = db()->prepare('INSERT INTO slots (lunch_id, start_utc, duration_min, proposed_by, created_at) VALUES (?,?,?,?,?)');
     $ins->execute([$lunchId, $startUtc, $duration, $proposedBy, now_utc()]);
     return (int) db()->lastInsertId();
+}
+
+/* ----------------------------------------------------------------------
+ * Lien de participation public (inscription libre) & délais
+ * ------------------------------------------------------------------- */
+
+function get_lunch_by_join_token(string $token): ?array
+{
+    $st = db()->prepare('SELECT * FROM lunches WHERE join_token = ?');
+    $st->execute([$token]);
+    $row = $st->fetch();
+    return $row ?: null;
+}
+
+/** Retourne le jeton public, en le générant pour les anciens déjeuners si besoin. */
+function ensure_join_token(array $lunch): string
+{
+    if (!empty($lunch['join_token'])) {
+        return $lunch['join_token'];
+    }
+    $tok = random_token(18);
+    db()->prepare('UPDATE lunches SET join_token = ? WHERE id = ?')->execute([$tok, (int) $lunch['id']]);
+    return $tok;
+}
+
+/** URL publique de participation. */
+function join_url(array $lunch): string
+{
+    return rtrim(config('app_url'), '/') . '/rejoindre.php?j=' . ensure_join_token($lunch);
+}
+
+/** L'inscription/réponse est-elle encore ouverte ? */
+function join_open(array $lunch): bool
+{
+    if ($lunch['status'] !== 'en_attente') {
+        return false;
+    }
+    if (!empty($lunch['deadline']) && $lunch['deadline'] <= now_utc()) {
+        return false;
+    }
+    return true;
+}
+
+function get_participant_by_email(int $lunchId, string $email): ?array
+{
+    $st = db()->prepare('SELECT * FROM participants WHERE lunch_id = ? AND email = ? LIMIT 1');
+    $st->execute([$lunchId, normalize_email($email)]);
+    $row = $st->fetch();
+    return $row ?: null;
+}
+
+/**
+ * Inscrit (ou retrouve) un participant via le lien public.
+ * @return array le participant.
+ */
+function register_self_participant(array $lunch, string $name, string $email): array
+{
+    $existing = get_participant_by_email((int) $lunch['id'], $email);
+    if ($existing) {
+        // Met à jour le nom si l'invité en fournit un.
+        if (trim($name) !== '' && $name !== $existing['name']) {
+            db()->prepare('UPDATE participants SET name = ? WHERE id = ?')->execute([$name, (int) $existing['id']]);
+            $existing['name'] = $name;
+        }
+        return $existing;
+    }
+    $ins = db()->prepare('INSERT INTO participants (lunch_id, name, email, token, is_organizer, self_registered, created_at) VALUES (?,?,?,?,0,1,?)');
+    $ins->execute([(int) $lunch['id'], $name, normalize_email($email), random_token(24), now_utc()]);
+    return get_participant((int) db()->lastInsertId());
+}
+
+/**
+ * Début minimal autorisé pour un créneau (maintenant + délai mini), en UTC.
+ * min_lead_days = 0 → seul le passé est interdit.
+ */
+function slot_min_start_utc(array $lunch): string
+{
+    $days = max(0, (int) ($lunch['min_lead_days'] ?? 0));
+    if ($days <= 0) {
+        return now_utc();
+    }
+    // Minuit local dans N jours, converti en UTC.
+    $dt = new DateTime('today +' . $days . ' days', app_tz());
+    $dt->setTimezone(new DateTimeZone('UTC'));
+    return $dt->format('Y-m-d H:i:s');
+}
+
+/** Un créneau (date+heure locales) respecte-t-il le délai mini ? */
+function slot_respects_lead(array $lunch, string $localDate, string $localTime): bool
+{
+    return local_to_utc($localDate . ' ' . $localTime) >= slot_min_start_utc($lunch);
+}
+
+/** Première date locale sélectionnable côté formulaire (YYYY-MM-DD). */
+function min_slot_date(array $lunch): string
+{
+    $dt = utc_dt(slot_min_start_utc($lunch));
+    $dt->setTimezone(app_tz());
+    return $dt->format('Y-m-d');
+}
+
+/**
+ * Date limite par défaut déduite des créneaux : la veille du créneau le plus tôt,
+ * à 12h locale (jamais dans le passé). Retourne un 'Y-m-d H:i:s' UTC ou null.
+ */
+function default_deadline_from_slots(array $slots): ?string
+{
+    $earliest = null;
+    foreach ($slots as $s) {
+        if (empty($s['date']) || empty($s['time'])) {
+            continue;
+        }
+        $utc = local_to_utc($s['date'] . ' ' . $s['time']);
+        if ($earliest === null || $utc < $earliest) {
+            $earliest = $utc;
+        }
+    }
+    if ($earliest === null) {
+        return null;
+    }
+    $dl = utc_dt($earliest);
+    $dl->setTimezone(app_tz());
+    $dl->modify('-1 day')->setTime(12, 0);
+    $dlUtc = (clone $dl)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    return $dlUtc > now_utc() ? $dlUtc : null;
 }
 
 function ensure_organizer(string $email): void

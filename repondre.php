@@ -34,11 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = trim((string) ($_POST['pdate'] ?? ''));
         $time = trim((string) ($_POST['ptime'] ?? ''));
         $dur = (int) ($_POST['pduration'] ?? 60) ?: 60;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && preg_match('/^\d{1,2}:\d{2}$/', $time)) {
-            propose_slot($participant, $date, $time, $dur);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !preg_match('/^\d{1,2}:\d{2}$/', $time)) {
+            flash(__('resp.invalid_slot'), 'error');
+        } elseif (propose_slot($participant, $date, $time, $dur)) {
             flash(__('resp.proposed_flash'), 'success');
         } else {
-            flash(__('resp.invalid_slot'), 'error');
+            flash(__('join.lead_error', ['date' => fmt_date_only(min_slot_date($lunch))]), 'error');
         }
         redirect('repondre.php?t=' . $token);
     }
@@ -52,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $slots = lunch_slots((int) $lunch['id']);
-$defaultDate = date('Y-m-d', strtotime('+7 days'));
+$minDate = min_slot_date($lunch);
+$defaultDate = $minDate;
 
 page_header(__('resp.title'));
 echo '<h1>' . h($lunch['title']) . '</h1>';
@@ -111,8 +113,9 @@ echo '</form>';
 // Proposer un créneau (défauts J+7 / 12h30).
 echo '<h2>' . h(__('resp.propose_h2')) . '</h2>';
 echo '<form method="post" class="card"><input type="hidden" name="action" value="propose">' . csrf_field();
+echo '<p class="help" style="margin-top:0">' . h(__('join.min_date_note', ['date' => fmt_date_only($minDate)])) . '</p>';
 echo '<div class="dyn-grid">'
-    . '<input class="fdate" type="date" name="pdate" value="' . h($defaultDate) . '">'
+    . '<input class="fdate" type="date" name="pdate" min="' . h($minDate) . '" value="' . h($defaultDate) . '">'
     . '<input type="time" name="ptime" value="12:30">'
     . '<input type="number" name="pduration" value="90" min="15" step="15"></div>';
 echo '<p style="margin-top:12px;margin-bottom:0"><button type="submit" class="btn-sec btn-small">' . h(__('resp.propose_btn')) . '</button></p>';

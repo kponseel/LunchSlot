@@ -310,6 +310,29 @@ check('DTSTAMP présent', strpos($ics, 'DTSTAMP:') !== false);
 check('DTSTART en UTC (Z)', strpos($ics, 'DTSTART:20260915T103000Z') !== false);
 check('lignes en CRLF', strpos($ics, "\r\n") !== false);
 
+/* ================= Inscription libre & délai mini ================= */
+echo "\n== J. Lien public, inscription libre, délai minimum ==\n";
+reset_all();
+$ok1 = date('Y-m-d', strtotime('+10 days'));
+$ok2 = date('Y-m-d', strtotime('+11 days'));
+$soon = date('Y-m-d', strtotime('+2 days'));
+$rj = create_lunch(['title' => 'Public', 'organizer_email' => 'o@ex.com', 'organizer_name' => 'O',
+    'organizer_participates' => false, 'deadline_local' => null, 'min_lead_days' => 7, 'locale' => 'fr',
+    'participants' => [], 'slots' => [['date' => $ok1, 'time' => '12:30', 'duration' => 90], ['date' => $ok2, 'time' => '12:30', 'duration' => 90]]]);
+$lj = $rj['lunch'];
+check('création sans participant', count(lunch_participants((int) $lj['id'])) === 0);
+check('jeton public + date limite auto', !empty($lj['join_token']) && !empty($lj['deadline']));
+check('délai mini : +2j refusé, +10j accepté', !slot_respects_lead($lj, $soon, '12:30') && slot_respects_lead($lj, $ok1, '12:30'));
+$ja = register_self_participant($lj, 'Alice', 'alice@ex.com');
+$jb = register_self_participant($lj, 'Bob', 'bob@ex.com');
+check('2 inscrits via le lien (self_registered)', count(lunch_participants((int) $lj['id'])) === 2 && (int) get_participant((int) $ja['id'])['self_registered'] === 1);
+check('même email → même participant', register_self_participant($lj, 'Alice', 'alice@ex.com')['id'] === $ja['id']);
+$sj = lunch_slots((int) $lj['id']);
+process_response($ja, [(int) $sj[0]['id'] => true]);
+process_response($jb, [(int) $sj[0]['id'] => true]);
+check('confirmation à l\'unanimité après inscriptions libres', get_lunch((int) $lj['id'])['status'] === 'confirme');
+check('proposition trop proche refusée', propose_slot($ja, $soon, '12:30', 60) === false);
+
 /* ================= Nettoyage ================= */
 array_map('unlink', glob($tmp . '/maillog/*') ?: []);
 @array_map('unlink', glob($tmp . '/*') ?: []);

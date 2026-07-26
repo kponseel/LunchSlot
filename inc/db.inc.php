@@ -139,6 +139,11 @@ function db_migrate(PDO $pdo): void
     // Migrations additives.
     db_add_column_if_missing($pdo, 'lunches', 'locale', "TEXT NOT NULL DEFAULT 'fr'");
     db_add_column_if_missing($pdo, 'lunches', 'organizer_name', 'TEXT');
+    // Lien de participation public (inscription libre) + délai mini avant un créneau.
+    db_add_column_if_missing($pdo, 'lunches', 'join_token', 'TEXT');
+    db_add_column_if_missing($pdo, 'lunches', 'min_lead_days', 'INTEGER NOT NULL DEFAULT 0');
+    // Auto-inscrit (via lien public) vs ajouté par l'organisateur.
+    db_add_column_if_missing($pdo, 'participants', 'self_registered', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 /**

@@ -156,6 +156,23 @@ function fmt_slot(string $startUtc, int $durationMin): string
         $dt->format('H\hi'), $end->format('H\hi'));
 }
 
+/** Formate une date seule 'Y-m-d' de façon lisible et localisée. */
+function fmt_date_only(string $ymd): string
+{
+    $en = (function_exists('current_locale') && current_locale() === 'en');
+    try {
+        $dt = new DateTime($ymd, app_tz());
+    } catch (Throwable $e) {
+        return $ymd;
+    }
+    $monthsFr = [1 => 'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    $monthsEn = [1 => 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    $m = ($en ? $monthsEn : $monthsFr)[(int) $dt->format('n')];
+    return $en
+        ? sprintf('%s %s, %s', $m, $dt->format('j'), $dt->format('Y'))
+        : sprintf('%s %s %s', $dt->format('j'), $m, $dt->format('Y'));
+}
+
 /** Format court date/heure locale (ex. pour deadline). */
 function fmt_datetime(string $utc): string
 {

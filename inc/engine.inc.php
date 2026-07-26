@@ -60,12 +60,27 @@ function process_response(array $participant, array $availability): void
     evaluate_and_confirm((int) $lunch['id']);
 }
 
-/** Un participant propose un nouveau créneau ; notifie les autres + organisateur. */
-function propose_slot(array $participant, string $date, string $time, int $duration): void
+/**
+ * Un participant propose un nouveau créneau ; notifie les autres + organisateur.
+ * @return bool false si le créneau ne respecte pas le délai mini (rien créé).
+ */
+function propose_slot(array $participant, string $date, string $time, int $duration): bool
 {
     $lunch = get_lunch((int) $participant['lunch_id']);
     if (!$lunch || $lunch['status'] !== 'en_attente') {
-        return;
+        return false;
+    }
+    if (!slot_respects_lead($lunch, $date, $time)) {
+        return false;
+    }
+    // Doublon exact : on ne recrée pas, on marque juste le proposeur disponible.
+    foreach (lunch_slots((int) $lunch['id']) as $ex) {
+        if ($ex['start_utc'] === local_to_utc($date . ' ' . $time)) {
+            set_response((int) $participant['id'], (int) $ex['id'], true);
+            send_placeholders($lunch, $participant, [$ex], []);
+            evaluate_and_confirm((int) $lunch['id']);
+            return true;
+        }
     }
     $slotId = add_slot_to_lunch((int) $lunch['id'], $date, $time, $duration, (int) $participant['id']);
     // Le proposeur est auto-marqué disponible.
@@ -89,6 +104,7 @@ function propose_slot(array $participant, string $date, string $time, int $durat
 
     // Un nouveau créneau ne peut pas rendre l'unanimité tout seul, mais on réévalue par sûreté.
     evaluate_and_confirm((int) $lunch['id']);
+    return true;
 }
 
 function organizer_is_participant(array $lunch): bool

@@ -36,14 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = trim((string) ($_POST['date'] ?? ''));
         $time = trim((string) ($_POST['time'] ?? ''));
         $dur = (int) ($_POST['duration'] ?? 90) ?: 90;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && preg_match('/^\d{1,2}:\d{2}$/', $time)) {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !preg_match('/^\d{1,2}:\d{2}$/', $time)) {
+            flash(__('resp.invalid_slot'), 'error');
+        } elseif (!slot_respects_lead($lunch, $date, $time)) {
+            flash(__('dash.share_add_slot_lead', ['date' => fmt_date_only(min_slot_date($lunch)), 'days' => (int) $lunch['min_lead_days']]), 'error');
+        } else {
             $sid = add_slot_to_lunch((int) $lunch['id'], $date, $time, $dur, null);
             $slot = get_slot($sid);
-            send_new_slot_notice($lunch, $slot, lunch_participants((int) $lunch['id']), 'Organisateur');
+            send_new_slot_notice($lunch, $slot, lunch_participants((int) $lunch['id']), organizer_display_name($lunch));
             evaluate_and_confirm((int) $lunch['id']);
             flash(__('dash.flash_added'), 'success');
-        } else {
-            flash(__('resp.invalid_slot'), 'error');
         }
         redirect('dashboard.php?t=' . $adminToken);
     }
@@ -116,6 +118,26 @@ if ($lunch['status'] === 'confirme' && $lunch['confirmed_slot_id']) {
 if ($lunch['status'] === 'annule') {
     echo '<div class="flash error">' . h(__('dash.canceled_banner')) . '</div>';
 }
+
+/* ---- Lien de participation (partage) ---- */
+$jurl = join_url($lunch);
+echo '<h2>' . h(__('dash.share_h2')) . '</h2><div class="card">';
+echo '<p class="help" style="margin-top:0">' . h(__('dash.share_help')) . '</p>';
+echo '<p><span class="copy">' . h($jurl) . '</span></p>';
+echo '<div class="rowbtns" style="flex-wrap:wrap">';
+echo '<button type="button" class="btn-sec btn-small ls-copy" data-copy="' . h($jurl) . '">' . h(__('dash.copy_btn')) . '</button>';
+$waText = rawurlencode($lunch['title'] . ' — ' . $jurl);
+echo '<a class="btn-sec btn-small" href="https://wa.me/?text=' . $waText . '" target="_blank" rel="noopener">WhatsApp</a>';
+$mailSubject = rawurlencode($lunch['title']);
+$mailBody = rawurlencode($jurl);
+echo '<a class="btn-sec btn-small" href="mailto:?subject=' . $mailSubject . '&body=' . $mailBody . '">Email</a>';
+echo '</div>';
+if ($lunch['status'] === 'en_attente') {
+    echo '<p class="help">' . h(join_open($lunch)
+        ? ($lunch['deadline'] ? __('dash.share_open_until', ['date' => fmt_datetime($lunch['deadline'])]) : '')
+        : __('dash.share_closed')) . '</p>';
+}
+echo '</div>';
 
 /* ---- Matrice créneaux × participants ---- */
 echo '<h2>' . h(__('dash.matrix_h2')) . '</h2>';
